@@ -1,0 +1,9 @@
+This installs the application tftpgui.pyw and assumes you already
+have the Python interpreter installed on your system.
+
+It also assumes the .pyw extension is associated with your python
+interpreter, so when tftpgui.pyw is run, it will automatically be
+run as "pythonw tftpgui.pyw".
+
+If you do not understand any of this - then do not proceed with
+this installation.
