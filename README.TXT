@@ -1,58 +1,43 @@
-TFTPgui
+TFTPgui Version : 2.0
+Date 20112207
 
-Version : 1.1
-Date : 20070301
+This program is a TFTP server.
 
+It is intended to run as a user initiated program, rather than a service daemon,
+and displays a gui interface allowing the user to stop and start the tftp server.
 
-
-This program is a TFTP server, it requires Python 2.4 or later.
-It is intended to run as a user initiated program, rather than
-a service daemon, and displays a gui interface allowing the user
-to stop and start the tftp server.
-
-It provides a simple tftp server for engineers to download
+It provides a simple tftp server for engineers to download and upload
 configuration files from equipment such as routers and switches.
 
-It has been tested on Windows XP and Linux platforms.
+Download the tar file tftpgui_2_0.tar : Untar it into a directory of your
+choice, and running "python tftpgui.py" will run the program.
 
+Or if using Windows: download tftpgui_2_0.zip, unzip it and run python tftpgui.pyc
 
-It consists of the files:
+Using the option --help on the command line will give further usage options.
 
-tftpgui.py     The main program - when run, it starts the gui
+Windows users may need to replace the 'python' with the path to their Python
+interpreter, i.e. C:\Python27\python tftpgui.pyc
 
-(For windows users, it may be called tftpgui.pyw)
+It would also be possible to associate the .pyc extension with the python
+interpreter, in which case merely double clicking on the tftpgui.pyc file
+will run the program.
 
-The following files are in the same folder, and are called by tftpgui.py:
+tftpgui requires python 2.5 to 2.7 to be installed, and also the
+python tk modules.
 
-ipv4_parse.py  Used to parse IP addresses
-stopwatch.py   Used to time packets
-tftpcfg.py     Used to parse and save configuration values
-tftphq.py      Implements the tftp protocol
+On Ubuntu/Debian this is package python-tk, on Widows it is built into
+Python and does not need to be separately installed.
 
-When tftpgui.py is run, it creates the file tftpgui.cfg to hold
-configuration data.
+Note, this version does not yet work under python 3
 
-It also requires two directories, one to hold logs, which are created
-during file transfers, and one to act as the root folder to which files
-are put, and from which files are pulled.
+Usage
 
-As default, these are the folders tftplogs and tftproot which are under
-the folder where the above files are held.
+The program presents you with a graphical window, with start, stop,
+setup and exit buttons.
 
-These two folders can be set to other folders of your choice from
-within the gui.
-
-
-
-USAGE ------------------------------------------------------------------
-
-Running tftpgui.py (typically using the "python tftpgui.py" command
-under Linux, or "tftpgui.pyw" under Windows - if the .pyw extension is
-associated with pythonw.exe),the program presents you with a graphical
-window, with start, stop, setup and exit buttons.
-
-Start - will start the server, which will then listen for file transfers
-from remote tftp clients.
+Start - will start the server, which will then listen for file
+        transfers from remote tftp clients.
 
 Stop - will stop the server.
 
@@ -60,55 +45,50 @@ Setup - will open a window giving various options described below.
 
 Exit - will close the program.
 
+Setup Options
 
+TFTP ROOT Folder: set the folder where files will be sent and received
 
-SETUP OPTIONS ---------------------------------------------------------
-
-TFTP ROOT Folder:  set the folder where files will be sent and received
-
-TFTP LOGS Folder:  During transmission, the program writes log entries,
-                   these are held in this folder, which you can set.
+TFTP LOGS Folder: During transmission, the program writes log entries,
+these are held in this folder, which you can set.
 
 Allow access from any remote IP Address, or just a specified subnet:
 
 If any remote address is allowed, then any client can call this server.
 
-If a subnet is specified, then you may input the subnet and mask,
-and the server will only accept calls from clients within this
-subnet.  If you wish to limit remote access from a single device, set
-the subnet to the remote device IP address, and the mask to 32.
+If a subnet is specified, then you may input the subnet and mask, and
+the server will only accept calls from clients within this subnet.
+If you wish to limit remote access from a single device, set the subnet
+to the remote device IP address, and the mask to 32.
 
 PORT: The port which the tftp server listens on, as standard this is 69
 
 It should be noted that on Linux, to set up a server listening on any
-port below 1000 requires root permission, therefore you will need to be
-root (or use sudo) to run this program on port 69.
+port below 1000 requires root permission, therefore you will need
+to be root (or use sudo) to run this program on port 69.
 
-APPLY   - Save and implement the options.
-CANCEL  - Discard any option changes you have done.
+APPLY - Save and implement the options.
+
+CANCEL - Discard any option changes you have done.
+
 DEFAULT - Set options to the initial defaults.
 
+Configuration file
 
+Under normal use, the file tftpgui.cfg is changed whenever the user
+sets changes on the graphical interface. The file is read on startup,
+so the users changes are persistent. Most users need never look at,
+or edit the file.
 
-LICENSE ---------------------------------------------------------------
+New in version 2:
 
-Author : Bernard Czenkusz
-Email  : bernie@skipole.co.uk
+Using the --nogui option on the command line allows the server to be
+run without a graphical environment, in which case the configuration
+file is the only form of controlling the server. In this case, a
+configuration file location can be set on the command line.
 
-TFTPgui - A GUI TFTP Server
-Copyright (c) 2007 Bernard Czenkusz
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-for more details.
-
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-
+The configuration file has one option, not set via the GUI. This
+is 'listenipaddress' which is normally set to 0.0.0.0 - meaning
+the server will listen on any ip address. If however you have a
+machine with multiple IP addresses and you want the tftp service
+to only listen on one, you can set the IP address here. 
