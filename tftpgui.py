@@ -4,8 +4,8 @@
 #
 # tftpgui.py  - a TFTP server
 #
-# Version : 2.0
-# Date : 20110718
+# Version : 2.1
+# Date : 20110725
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
@@ -92,7 +92,7 @@ Without any options the program runs with a GUI.
 If no configuration file is specified, the program will look
 for tftpgui.cfg in the same directory as the %prog script."""
 
-parser = OptionParser(usage=usage, version="2.0")
+parser = OptionParser(usage=usage, version="2.1")
 parser.add_option("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
 (options, args) = parser.parse_args()

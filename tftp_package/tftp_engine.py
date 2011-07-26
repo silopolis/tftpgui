@@ -2,8 +2,8 @@
 #
 # tftp_engine.py  - runs the tftp server for TFTPgui
 #
-# Version : 2.0
-# Date : 20110718
+# Version : 2.1
+# Date : 20110725
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
@@ -111,7 +111,7 @@ class ServerState(object):
         # and displayed to give server status messages
         self.text = """TFTPgui - a free tftp Server
 
-Version\t:  TFTPgui 2.0
+Version\t:  TFTPgui 2.1
 Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
@@ -162,7 +162,7 @@ License\t:  GPLv3
 
         if len(text_line)>100:
             # limit to 100 characters
-            text_line = text_line[:50]
+            text_line = text_line[:100]
         # strip non-printable characters, as this is to be displayed on screen
         text_line = ''.join([char for char in text_line if char in string.printable])
 
@@ -353,6 +353,10 @@ class TFTPserver(asyncore.dispatcher):
         asyncore.dispatcher.__init__(self)
         self.server = server
         self.create_socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # list of connections to test for sending data
+        self.connection_list = []
+        # current connection sending data
+        self.connection = None
         try:
             self.bind((server.listenipaddress, server.listenport))
         except Exception, e:
@@ -387,6 +391,8 @@ socket on this port."""
         # buffer size of 4100 is given, when negotiating block size, only sizes
         # less than 4100 will be accepted
         rx_data, rx_addr = self.recvfrom(4100)
+        if len(rx_data)>4100:
+            raise DropPacket
         try:
             if rx_addr not in CONNECTIONS:
                 # This is not an existing connection, so must be
@@ -420,14 +426,39 @@ socket on this port."""
             pass
 
     def handle_write(self):
-        "Check all connections, if any have data to send, send it"
+        """Check connections, if one has data to send, send it
+           keep sending until no more on that connection, then on next call to
+           this function, try the next connection"""
         global CONNECTIONS
-        connection_list = list(CONNECTIONS.values())
-        for connection in connection_list:
-            if connection.tx_data:
-                # The connection object has method send_data but
-                # needs to use this dispatchers sendto method
-                connection.send_data(self.sendto)
+        # self.connection is the current connection sending data
+        # self.connection_list is a list of the connections,
+        # test each in turn, popping the connection from the list
+        # until none are left, then renew self.connection_list from
+        # CONNECTIONS - this is done to ensure each connection is
+        # handled in turn, and if CONNECTIONS is updated while one
+        # is being dealt with, any new connections are tested after
+        # the current ones in the list.
+        if not self.connection:
+            # get the next connection in the list
+            if not self.connection_list:
+                # but if no list, renew it now
+                self.connection_list = list(CONNECTIONS.values())
+            if not self.connection_list:
+                # no available connections, just return
+                return
+            # so one or more connections exist in the list
+            # get a connection, and remove it from the list
+            self.connection = self.connection_list.pop()
+        if self.connection.expired or not self.connection.tx_data:
+            self.connection = None
+            return
+        # so current connection has data to send, send it
+        self.connection.send_data(self.sendto)
+        # And if all data sent, or connection shutdown
+        if self.connection.expired or not self.connection.tx_data:
+            self.connection = None
+            return
+
 
     def handle_connect(self):
         pass
@@ -597,20 +628,22 @@ class Connection(object):
         # about to send data
         # re-set connection time to current time
         self.connection_time=time.time()
-        while self.tx_data:
-            i=tftp_server_sendto(self.tx_data, self.rx_addr)
-            if i == -1:
-                # Problem has ocurred, drop the connection
-                self.shutdown()
-                break
-            self.tx_data=self.tx_data[i:]
-        self.tx_data=None
-        # if this is the last packet to be sent, shutdown the connection
-        if self.last_packet:
+        # send the data
+        sent=tftp_server_sendto(self.tx_data, self.rx_addr)
+        if sent == -1:
+            # Problem has ocurred, drop the connection
             self.shutdown()
-        else:
-            # expecting a reply, so start TTL timer
-            self.timer.start()
+            return
+        self.tx_data=self.tx_data[sent:]
+        if not self.tx_data:
+            # All data has been sent
+            # if this is the last packet to be sent, shutdown the connection
+            if self.last_packet:
+                self.shutdown()
+            else:
+                # expecting a reply, so start TTL timer
+                self.timer.start()
+
 
     def poll(self):
         """Polled by the main loop.
@@ -625,10 +658,10 @@ class Connection(object):
             return
         if self.expired:
             return
-        if not self.timer.started:
+        if self.tx_data or not self.timer.started:
             # Must be sending data, so nothing to check
             return
-        # timer has started, so waiting for a packet
+        # no tx data and timer has started, so waiting for a packet
         if self.timer.time_it():
             # if True, still within TTL, so ok
             return
@@ -654,6 +687,12 @@ class Connection(object):
         if self.fp:
             self.fp.close()
         self.expired = True
+        self.tx_data=""
+
+    def __str__(self):
+        "String value of connection, for diagnostic purposes"
+        str_list = "%s %s" % (self.rx_addr, self.blkcount[2])
+        return str_list
 
 
 
@@ -721,7 +760,7 @@ class SendData(Connection):
         if self.expired:
             return
         # if timer hasn't started, we may be in the process of sending
-        if not self.timer.started:
+        if self.tx_data or not self.timer.started:
             return
         if rx_data[0] != "\x00":
             # All packets should start 00, so ignore it
@@ -731,7 +770,7 @@ class SendData(Connection):
         if rx_data[1] == "\x05" :
             # Its an error packet, log it and drop the connection
             try:
-                if len(rx_data[4:]) > 1:
+                if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
                     self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
                                                                        self.rx_addr[1],
@@ -814,7 +853,7 @@ class ReceiveData(Connection):
         if self.expired:
             return
         # if timer hasn't started, we may be in the process of sending
-        if not self.timer.started:
+        if self.tx_data or not self.timer.started:
             return
         if rx_data[0] != "\x00":
             # All packets should start 00, so ignore it
@@ -824,7 +863,7 @@ class ReceiveData(Connection):
         if rx_data[1] == "\x05" :
             # Its an error packet, log it and drop the connection
             try:
-                if len(rx_data[4:]) > 1:
+                if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
                     self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
                                                                        self.rx_addr[1],
@@ -851,11 +890,17 @@ class ReceiveData(Connection):
             # Blockcount mismatch, ignore it
             self.blkcount = old_blockcount
             return
-        payload=rx_data[4:]
-        # Received packet ok
         # re-set any timouts
         self.timeouts = 0
         self.timer.stop()
+        if len(rx_data) > self.blksize+4:
+            # received data too long
+            self.tx_data="\x00\x05\x00\x04Block size too long\x00"
+            # send and shutdown, don't wait for anything further
+            self.last_packet = True
+            return
+        payload=rx_data[4:]
+        # Received packet ok
         # Make an acknowledgement packet
         self.re_tx_data="\x00\x04"+self.blkcount[1]
         self.tx_data=self.re_tx_data

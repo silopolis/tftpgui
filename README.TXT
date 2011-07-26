@@ -1,5 +1,5 @@
-TFTPgui Version : 2.0
-Date 20112207
+TFTPgui Version : 2.1
+Date 20110726
 
 This program is a TFTP server.
 
@@ -9,10 +9,10 @@ and displays a gui interface allowing the user to stop and start the tftp server
 It provides a simple tftp server for engineers to download and upload
 configuration files from equipment such as routers and switches.
 
-Download the tar file tftpgui_2_0.tar : Untar it into a directory of your
+Download the tar file tftpgui_2_1.tar : Untar it into a directory of your
 choice, and running "python tftpgui.py" will run the program.
 
-Or if using Windows: download tftpgui_2_0.zip, unzip it and run python tftpgui.pyc
+Or if using Windows: download tftpgui_2_1.zip, unzip it and run python tftpgui.pyc
 
 Using the option --help on the command line will give further usage options.
 
@@ -87,7 +87,11 @@ run without a graphical environment, in which case the configuration
 file is the only form of controlling the server. In this case, a
 configuration file location can be set on the command line.
 
-The configuration file has one option, not set via the GUI. This
+Try:
+python tftpgui.py --help
+For a description of options
+
+The configuration file has one option not set via the GUI. This
 is 'listenipaddress' which is normally set to 0.0.0.0 - meaning
 the server will listen on any ip address. If however you have a
 machine with multiple IP addresses and you want the tftp service
