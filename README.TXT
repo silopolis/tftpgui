@@ -12,15 +12,15 @@ configuration files from equipment such as routers and switches.
 Download the tar file tftpgui_2_1.tar : Untar it into a directory of your
 choice, and running "python tftpgui.py" will run the program.
 
-Or if using Windows: download tftpgui_2_1.zip, unzip it and run python tftpgui.pyc
+Or if using Windows: download tftpgui_2_1.zip, unzip it and run python tftpgui.pyw
 
 Using the option --help on the command line will give further usage options.
 
 Windows users may need to replace the 'python' with the path to their Python
-interpreter, i.e. C:\Python27\python tftpgui.pyc
+interpreter, i.e. C:\Python27\python tftpgui.pyw
 
-It would also be possible to associate the .pyc extension with the python
-interpreter, in which case merely double clicking on the tftpgui.pyc file
+It would also be possible to associate the .pyw extension with the python
+interpreter, in which case merely double clicking on the tftpgui.pyw file
 will run the program.
 
 tftpgui requires python 2.5 to 2.7 to be installed, and also the
