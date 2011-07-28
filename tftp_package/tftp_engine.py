@@ -2,7 +2,7 @@
 #
 # tftp_engine.py  - runs the tftp server for TFTPgui
 #
-# Version : 2.1
+# Version : 2.2
 # Date : 20110725
 #
 # Author : Bernard Czenkusz
@@ -111,7 +111,7 @@ class ServerState(object):
         # and displayed to give server status messages
         self.text = """TFTPgui - a free tftp Server
 
-Version\t:  TFTPgui 2.1
+Version\t:  TFTPgui 2.2
 Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
@@ -143,15 +143,16 @@ License\t:  GPLv3
             try:
                 logging.exception(e)
             except Exception:
-                self.logging_enabled = False
+                self.log_disable()
 
     def log_disable(self):
         "close the logger"
         if self.logging_enabled:
             try:
                 self.rootLogger.removeHandler(self.loghandler)
-            except:
-                self.logging_enabled = False   
+            except Exception:
+                pass
+        self.logging_enabled = False
 
     def add_text(self, text_line, clear=False):
         """Adds text_line to the log, and also to self.text,
@@ -170,7 +171,7 @@ License\t:  GPLv3
             try:
                 logging.info(text_line)
             except Exception:
-                self.logging_enabled = False
+                self.log_disable()
 
         if clear:
             self.text = text_line
@@ -186,7 +187,9 @@ License\t:  GPLv3
         self.text = "\n".join(text_list)
 
     def get_connections(self):
-        "If connections are needed, they are available via this method"
+        """If connections are needed, they are available via this method
+           CONNECTIONS is a dictionary of current connections
+           the keys are address tuples, the values are connection objects"""
         return CONNECTIONS
 
     def get_config_dict(self):
@@ -237,8 +240,15 @@ License\t:  GPLv3
 
     def shutdown(self):
         "Shuts down the server"
+        global CONNECTIONS
+        # remove all connections from CONNECTIONS
+        for connection in CONNECTIONS.values():
+            connection.shutdown()
+        CONNECTIONS = {}
         self.serving = False
         self.engine_available = False
+        self.add_text("TFTPgui application stopped")
+        self.log_disable()     
 
 
 class STOPWATCH_ERROR(Exception):
@@ -991,12 +1001,6 @@ def engine_loop(server, nogui):
         # The loop has been manually stopped, exit the program
         return 0
     finally:
-        # remove all connections from CONNECTIONS
-        for connection in CONNECTIONS.values():
-            connection.shutdown()
-        CONNECTIONS = {}
-        server.serving = False
-        server.engine_available = False
-        server.add_text("TFTPgui application stopped")
-        server.log_disable()     
+        # shutdown the server
+        server.shutdown()   
     return 0
