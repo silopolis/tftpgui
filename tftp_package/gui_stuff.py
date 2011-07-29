@@ -28,57 +28,57 @@
 #
 
 
-import Tkinter, tkFileDialog, tkMessageBox, socket, os
+import tkinter, tkFileDialog, tkMessageBox, socket, os
 
 from tftp_package import tftpcfg
 
 
-class TopFrame(Tkinter.Frame):
+class TopFrame(tkinter.Frame):
     def __init__(self, parent, server):
-        Tkinter.Frame.__init__(self, parent)
+        tkinter.Frame.__init__(self, parent)
         self.server = server
         self.parent = parent
         # Create the buttons
-        ButtonFrame=Tkinter.Frame(self)
-        ButtonFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X)
+        ButtonFrame=tkinter.Frame(self)
+        ButtonFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
         # create four buttons
         # START
-        self.StartButton=Tkinter.Button(ButtonFrame)
+        self.StartButton=tkinter.Button(ButtonFrame)
         self.StartButton["text"]="Start"
         self.StartButton["command"]=self.start_server
-        self.StartButton.pack(side=Tkinter.LEFT, expand=Tkinter.YES, fill=Tkinter.X)
+        self.StartButton.pack(side=tkinter.LEFT, expand=tkinter.YES, fill=tkinter.X)
         # STOP
-        self.StopButton=Tkinter.Button(ButtonFrame)
+        self.StopButton=tkinter.Button(ButtonFrame)
         self.StopButton["text"]="Stop"
         self.StopButton["command"]=self.stop_server
-        self.StopButton.pack(side=Tkinter.LEFT, expand=Tkinter.YES, fill=Tkinter.X)
+        self.StopButton.pack(side=tkinter.LEFT, expand=tkinter.YES, fill=tkinter.X)
         # SETUP
-        self.SetupButton=Tkinter.Button(ButtonFrame)
+        self.SetupButton=tkinter.Button(ButtonFrame)
         self.SetupButton["text"]="Setup"
         self.SetupButton["command"]=self.setup_server
-        self.SetupButton.pack(side=Tkinter.LEFT, expand=Tkinter.YES, fill=Tkinter.X)
+        self.SetupButton.pack(side=tkinter.LEFT, expand=tkinter.YES, fill=tkinter.X)
         # EXIT
-        self.ExitButton=Tkinter.Button(ButtonFrame)
+        self.ExitButton=tkinter.Button(ButtonFrame)
         self.ExitButton["text"]="Exit"
         self.ExitButton["command"]=self.exit_app
-        self.ExitButton["state"]=Tkinter.NORMAL
-        self.ExitButton.pack(side=Tkinter.LEFT, expand=Tkinter.YES, fill=Tkinter.X)
+        self.ExitButton["state"]=tkinter.NORMAL
+        self.ExitButton.pack(side=tkinter.LEFT, expand=tkinter.YES, fill=tkinter.X)
 
         # Create a label area, showing tftp progress
-        self.TextArea=Tkinter.Label(self, width=50, height=16, relief=Tkinter.SUNKEN,
+        self.TextArea=tkinter.Label(self, width=50, height=16, relief=tkinter.SUNKEN,
                                     background="white", borderwidth=2,
-                                    anchor=Tkinter.NW, justify=Tkinter.LEFT)
-        self.TextArea.pack(side=Tkinter.TOP, padx=10, pady=10)
+                                    anchor=tkinter.NW, justify=tkinter.LEFT)
+        self.TextArea.pack(side=tkinter.TOP, padx=10, pady=10)
 
         # Create a Progress Bar
-        BarFrame=Tkinter.Frame(self)
-        BarFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X)
+        BarFrame=tkinter.Frame(self)
+        BarFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
         self.Bar=ProgressBar(BarFrame)
         self.bar_value = 0
 
         # address and port status at bottom of frame
-        self.StatusText = Tkinter.Label(self)
-        self.StatusText.pack(side=Tkinter.TOP, pady=5)
+        self.StatusText = tkinter.Label(self)
+        self.StatusText.pack(side=tkinter.TOP, pady=5)
 
         # Set screen text and status text
         self.status_text()
@@ -127,7 +127,7 @@ class TopFrame(Tkinter.Frame):
             elif self.Bar.oscillating:
                 # Clear the progress bar
                 self.Bar.Clear()
-            if not self.server.serving and self.StartButton["state"] == Tkinter.DISABLED:
+            if not self.server.serving and self.StartButton["state"] == tkinter.DISABLED:
                 # Update the buttons
                 self.update_buttons()
             # and call this function again, in another 100 msec
@@ -149,13 +149,13 @@ class TopFrame(Tkinter.Frame):
 
     def update_buttons(self):
         if self.server.serving:
-            self.StartButton["state"]=Tkinter.DISABLED
-            self.StopButton["state"]=Tkinter.NORMAL
-            self.SetupButton["state"]=Tkinter.DISABLED
+            self.StartButton["state"]=tkinter.DISABLED
+            self.StopButton["state"]=tkinter.NORMAL
+            self.SetupButton["state"]=tkinter.DISABLED
         else:
-            self.StartButton["state"]=Tkinter.NORMAL
-            self.StopButton["state"]=Tkinter.DISABLED
-            self.SetupButton["state"]=Tkinter.NORMAL
+            self.StartButton["state"]=tkinter.NORMAL
+            self.StopButton["state"]=tkinter.DISABLED
+            self.SetupButton["state"]=tkinter.NORMAL
 
     def exit_app(self):
         self.quit()
@@ -170,8 +170,8 @@ class ProgressBar(object):
         self.shaker=1
         self.Progress=0
         self.oscillating = False
-        self.BarCanvas=Tkinter.Canvas(parent, width=Width, height=Height,
-                                      borderwidth=1, relief=Tkinter.SUNKEN)
+        self.BarCanvas=tkinter.Canvas(parent, width=Width, height=Height,
+                                      borderwidth=1, relief=tkinter.SUNKEN)
         if (BackgroundColor==None): BackgroundColor="white"
         self.BarCanvas["background"]=BackgroundColor
         self.BarCanvas.pack(padx=5, pady=2)
@@ -213,20 +213,20 @@ class ProgressBar(object):
         self.BarCanvas.coords(self.RectangleID, ProgressPixel-2, 0, ProgressPixel, self.Height)
 
 
-class SetupFrame(Tkinter.Frame):
+class SetupFrame(tkinter.Frame):
     def __init__(self, parent, server, top_frame):
-        Tkinter.Frame.__init__(self, parent)
+        tkinter.Frame.__init__(self, parent)
 
         self.server = server
         self.top_frame = top_frame
 
         # Create the widgit variables
-        self.tftprootfolder=Tkinter.StringVar()
-        self.logfolder=Tkinter.StringVar()
-        self.anyclient=Tkinter.StringVar()
-        self.clientipaddress=Tkinter.StringVar()
-        self.clientmask=Tkinter.StringVar()
-        self.listenport=Tkinter.StringVar()
+        self.tftprootfolder=tkinter.StringVar()
+        self.logfolder=tkinter.StringVar()
+        self.anyclient=tkinter.StringVar()
+        self.clientipaddress=tkinter.StringVar()
+        self.clientmask=tkinter.StringVar()
+        self.listenport=tkinter.StringVar()
 
         # get the config values from the server as a dictionary
         cfgdict = server.get_config_dict()
@@ -234,101 +234,101 @@ class SetupFrame(Tkinter.Frame):
         self.AssignDictToValues(cfgdict)
 
         # Create the tfp root directory entry widget
-        BigTftprootFrame=Tkinter.Frame(self)
-        BigTftprootFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X, pady=5)
+        BigTftprootFrame=tkinter.Frame(self)
+        BigTftprootFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X, pady=5)
         # Create the text label for the entry
-        Tkinter.Label(BigTftprootFrame, text="Tftp root folder for GET and PUT files").pack(side=Tkinter.TOP, anchor=Tkinter.W)
-        TftprootFrame=Tkinter.Frame(BigTftprootFrame)
-        TftprootFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X)
+        tkinter.Label(BigTftprootFrame, text="Tftp root folder for GET and PUT files").pack(side=tkinter.TOP, anchor=tkinter.W)
+        TftprootFrame=tkinter.Frame(BigTftprootFrame)
+        TftprootFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
         # Create the entry field
-        Tkinter.Entry(TftprootFrame, textvariable=self.tftprootfolder, width=30).pack(side=Tkinter.LEFT)
+        tkinter.Entry(TftprootFrame, textvariable=self.tftprootfolder, width=30).pack(side=tkinter.LEFT)
         # Create the browse button
-        self.RootBrowseButton=Tkinter.Button(TftprootFrame)
+        self.RootBrowseButton=tkinter.Button(TftprootFrame)
         self.RootBrowseButton["text"]="Browse"
         self.RootBrowseButton["width"]=8
         self.RootBrowseButton["command"]=self.BrowseRootFolder
-        self.RootBrowseButton["state"]=Tkinter.NORMAL
-        self.RootBrowseButton.pack(side=Tkinter.LEFT,padx=5)
+        self.RootBrowseButton["state"]=tkinter.NORMAL
+        self.RootBrowseButton.pack(side=tkinter.LEFT,padx=5)
 
         # Create the log directory entry widget
-        BigLogFrame=Tkinter.Frame(self)
-        BigLogFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X, pady=5)
+        BigLogFrame=tkinter.Frame(self)
+        BigLogFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X, pady=5)
         # Create the text label for the entry
-        Tkinter.Label(BigLogFrame, text="Folder for Log files").pack(side=Tkinter.TOP, anchor=Tkinter.W)
-        LogFrame=Tkinter.Frame(BigLogFrame)
-        LogFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X)
+        tkinter.Label(BigLogFrame, text="Folder for Log files").pack(side=tkinter.TOP, anchor=tkinter.W)
+        LogFrame=tkinter.Frame(BigLogFrame)
+        LogFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
         # Create the entry field
-        Tkinter.Entry(LogFrame, textvariable=self.logfolder, width=30).pack(side=Tkinter.LEFT)
+        tkinter.Entry(LogFrame, textvariable=self.logfolder, width=30).pack(side=tkinter.LEFT)
         # Create the browse button
-        self.LogBrowseButton=Tkinter.Button(LogFrame)
+        self.LogBrowseButton=tkinter.Button(LogFrame)
         self.LogBrowseButton["text"]="Browse"
         self.LogBrowseButton["width"]=8
         self.LogBrowseButton["command"]=self.BrowseLogFolder
-        self.LogBrowseButton["state"]=Tkinter.NORMAL
-        self.LogBrowseButton.pack(side=Tkinter.LEFT,padx=5)
+        self.LogBrowseButton["state"]=tkinter.NORMAL
+        self.LogBrowseButton.pack(side=tkinter.LEFT,padx=5)
 
         # Create the input client ip address radio buttons
-        ClientFrame=Tkinter.Frame(self)
-        ClientFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X, pady=5)
+        ClientFrame=tkinter.Frame(self)
+        ClientFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X, pady=5)
         # Create the text label for the entry
-        Tkinter.Label(ClientFrame, text="Allow TFTP from :").pack(side=Tkinter.LEFT)
+        tkinter.Label(ClientFrame, text="Allow TFTP from :").pack(side=tkinter.LEFT)
         # Create the buttons
-        self.RadioAny=Tkinter.Radiobutton(ClientFrame, text="Any", variable=self.anyclient, value="1")
-        self.RadioAny.pack(side=Tkinter.LEFT, padx=10)
+        self.RadioAny=tkinter.Radiobutton(ClientFrame, text="Any", variable=self.anyclient, value="1")
+        self.RadioAny.pack(side=tkinter.LEFT, padx=10)
         self.RadioAny["command"]=self.ToggleRadio
-        self.RadioSubnet=Tkinter.Radiobutton(ClientFrame, text="Subnet", variable=self.anyclient, value="0")
-        self.RadioSubnet.pack(side=Tkinter.LEFT, padx=10)
+        self.RadioSubnet=tkinter.Radiobutton(ClientFrame, text="Subnet", variable=self.anyclient, value="0")
+        self.RadioSubnet.pack(side=tkinter.LEFT, padx=10)
         self.RadioSubnet["command"]=self.ToggleRadio
 
         # Create the entry client ip address and mask fields
-        AddressFrame=Tkinter.Frame(self)
-        AddressFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X)
-        Tkinter.Label(AddressFrame, text="IP :").pack(side=Tkinter.LEFT)
-        self.IPEntry=Tkinter.Entry(AddressFrame, textvariable=self.clientipaddress, width=17)
-        self.IPEntry.pack(side=Tkinter.LEFT)
-        Tkinter.Label(AddressFrame, text="   MASK :").pack(side=Tkinter.LEFT)
-        self.MASKEntry=Tkinter.Entry(AddressFrame, textvariable=self.clientmask, width=3)
-        self.MASKEntry.pack(side=Tkinter.LEFT)
+        AddressFrame=tkinter.Frame(self)
+        AddressFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
+        tkinter.Label(AddressFrame, text="IP :").pack(side=tkinter.LEFT)
+        self.IPEntry=tkinter.Entry(AddressFrame, textvariable=self.clientipaddress, width=17)
+        self.IPEntry.pack(side=tkinter.LEFT)
+        tkinter.Label(AddressFrame, text="   MASK :").pack(side=tkinter.LEFT)
+        self.MASKEntry=tkinter.Entry(AddressFrame, textvariable=self.clientmask, width=3)
+        self.MASKEntry.pack(side=tkinter.LEFT)
         # Set field enabled or disabled depending on Any or Subnet radio buttons
         self.ToggleRadio()
 
         # Set udp port
-        PortFrame=Tkinter.Frame(self)
-        PortFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X, pady=15)
-        Tkinter.Label(PortFrame, text="UDP port :").pack(side=Tkinter.LEFT)
-        self.PortEntry=Tkinter.Entry(PortFrame, textvariable=self.listenport, width=6)
-        self.PortEntry.pack(side=Tkinter.LEFT)
-        Tkinter.Label(PortFrame, text="(Default 69)").pack(side=Tkinter.LEFT, padx=10)
+        PortFrame=tkinter.Frame(self)
+        PortFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X, pady=15)
+        tkinter.Label(PortFrame, text="UDP port :").pack(side=tkinter.LEFT)
+        self.PortEntry=tkinter.Entry(PortFrame, textvariable=self.listenport, width=6)
+        self.PortEntry.pack(side=tkinter.LEFT)
+        tkinter.Label(PortFrame, text="(Default 69)").pack(side=tkinter.LEFT, padx=10)
 
         # Create the Apply and Cancel buttons
-        ButtonFrame=Tkinter.Frame(self)
-        ButtonFrame.pack(side=Tkinter.TOP, expand=Tkinter.YES, fill=Tkinter.X, pady=10)
+        ButtonFrame=tkinter.Frame(self)
+        ButtonFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X, pady=10)
         # create two buttons - Apply Cancel
-        self.ApplyButton=Tkinter.Button(ButtonFrame)
+        self.ApplyButton=tkinter.Button(ButtonFrame)
         self.ApplyButton["text"]="Apply"
         self.ApplyButton["width"]=8
         self.ApplyButton["command"]=self.ApplySetup
-        self.ApplyButton["state"]=Tkinter.NORMAL
-        self.ApplyButton.pack(side=Tkinter.LEFT, padx=10)
-        self.CancelButton=Tkinter.Button(ButtonFrame)
+        self.ApplyButton["state"]=tkinter.NORMAL
+        self.ApplyButton.pack(side=tkinter.LEFT, padx=10)
+        self.CancelButton=tkinter.Button(ButtonFrame)
         self.CancelButton["text"]="Cancel"
         self.CancelButton["width"]=8
         self.CancelButton["command"]=self.CancelSetup
-        self.CancelButton["state"]=Tkinter.NORMAL
-        self.CancelButton.pack(side=Tkinter.LEFT, padx=10)
-        self.DefaultButton=Tkinter.Button(ButtonFrame)
+        self.CancelButton["state"]=tkinter.NORMAL
+        self.CancelButton.pack(side=tkinter.LEFT, padx=10)
+        self.DefaultButton=tkinter.Button(ButtonFrame)
         self.DefaultButton["text"]="Default"
         self.DefaultButton["width"]=8
         self.DefaultButton["command"]=self.DefaultSetup
-        self.DefaultButton["state"]=Tkinter.NORMAL
-        self.DefaultButton.pack(side=Tkinter.LEFT, padx=10)
+        self.DefaultButton["state"]=tkinter.NORMAL
+        self.DefaultButton.pack(side=tkinter.LEFT, padx=10)
 
         # Create another text label
         label_text = """Press Apply to set the changes.
 Cancel deletes any changes and reverts to current settings.
 Default sets fields to default values, but Apply must still
 be pressed to apply the values."""
-        Tkinter.Label(self, text=label_text).pack(side=Tkinter.BOTTOM, anchor=Tkinter.W)
+        tkinter.Label(self, text=label_text).pack(side=tkinter.BOTTOM, anchor=tkinter.W)
 
     def BrowseRootFolder(self):
         dirname = tkFileDialog.askdirectory(parent=self, mustexist=1, initialdir=self.tftprootfolder.get())
@@ -419,20 +419,20 @@ be pressed to apply the values."""
 
     def ToggleRadio(self):
         if self.anyclient.get() == "1":
-            self.IPEntry["state"]=Tkinter.DISABLED
-            self.MASKEntry["state"]=Tkinter.DISABLED
+            self.IPEntry["state"]=tkinter.DISABLED
+            self.MASKEntry["state"]=tkinter.DISABLED
         else:
-            self.IPEntry["state"]=Tkinter.NORMAL
-            self.MASKEntry["state"]=Tkinter.NORMAL
+            self.IPEntry["state"]=tkinter.NORMAL
+            self.MASKEntry["state"]=tkinter.NORMAL
 
 
 
 def create_gui(server):
     "Create the GUI, and run the GUI mainloop"
-    MainWindow = Tkinter.Tk()
+    MainWindow = tkinter.Tk()
     MainWindow.title("TFTPgui")
     MainWindow.minsize(width=450, height=350)
-    MainWindow.resizable(Tkinter.NO, Tkinter.NO)
+    MainWindow.resizable(tkinter.NO, tkinter.NO)
     # set up a frame, with the root as its MainWindow window
     top_frame = TopFrame(MainWindow, server)
     # enter the event loop

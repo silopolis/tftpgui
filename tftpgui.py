@@ -130,7 +130,7 @@ else:
         cfgdict = tftpcfg.get_defaults()
         error_text = "Error in config file:\n" + str(e) + "\nso using defaults"
 
-if options.nogui:
+if nogui:
     # Create a server without a gui
     # this class records the server state, start with the server running
     server = tftp_engine.ServerState(cfgdict, serving=True)
@@ -148,12 +148,12 @@ if options.nogui:
 
 # Create a server with a gui
 try:
-    # Check Tkinter can be imported
-    import Tkinter
+    # Check tkinter can be imported
+    import tkinter
 except Exception, e:
     print """\
-Failed to import Tkinter - required to run the GUI.
-Check the TKinter Python module has been installed on this machine.
+Failed to import tkinter - required to run the GUI.
+Check the tKinter Python module has been installed on this machine.
 Alternatively, run with the --nogui option to operate without a GUI"""
     sys.exit(1)
 
