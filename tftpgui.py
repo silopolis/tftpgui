@@ -64,7 +64,7 @@ If 'listenipaddress' is set to a specific IP address of the computer
 only listen on the address given.
 
 If run with the --nogui option then the program has no dependencies other
-than standard Python (version 3).  If run with a GUI then the
+than standard Python (version 3.2 and above).  If run with a GUI then the
 script imports the Tkinter module, and some Gnu/Linux distributions may
 require this installing (package python-tk in Debian).
 
@@ -73,29 +73,16 @@ under Gnu/Linux the program must be run with administrator pivileges
 (ie using sudo) - as the OS requires this.
 """
 
-import os, sys, thread, time
-
-from optparse import OptionParser
+import os, sys, thread, time, argparse
 
 from tftp_package import tftpcfg, tftp_engine
 
 # Check the python version
-if not sys.version_info[0] == 3:
+if not sys.version_info[0] == 3 and sys.version_info[1] >= 2:
     print("Sorry, your python version is not compatable")
-    print("This program requires python 3.0 or later")
+    print("This program requires python 3.2 or later")
     print("Program exiting")
     sys.exit(1)
-
-usage = """usage: %prog [options] <configuration-file>
-
-Without any options the program runs with a GUI.
-If no configuration file is specified, the program will look
-for tftpgui.cfg in the same directory as the %prog script."""
-
-parser = OptionParser(usage=usage, version="3.0")
-parser.add_option("-n", "--nogui", action="store_true", dest="nogui", default=False,
-                  help="program runs without GUI, serving immediately")
-(options, args) = parser.parse_args()
 
 # get the directory this script is in
 scriptdirectory=os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -103,15 +90,29 @@ scriptdirectory=os.path.abspath(os.path.dirname(sys.argv[0]))
 # set the default location of the config file
 default_configfile=os.path.join(scriptdirectory,'tftpgui.cfg')
 
-if args:
-    configfile = args[0]
-else:
-    configfile = default_configfile
+
+parser = argparse.ArgumentParser(description='A TFTP gui server', epilog='''
+Without any options the program runs with a GUI.
+If no configuration file is specified, the program will look
+for tftpgui.cfg in the same directory as the %(prog)s script.''')
+
+parser.add_argument("-n", "--nogui", action="store_true", dest="nogui", default=False,
+                  help="program runs without GUI, serving immediately")
+
+parser.add_argument('--version', action='version', version='%(prog)s 3.0')
+
+parser.add_argument('configfile', dest="configfile", default=default_configfile,
+                  help="path to configuration file")
+
+args = parser.parse_args()
+
+nogui = args.nogui
+configfile = args.configfile
 
 # read configuration values
 error_text = ""
 
-if options.nogui or configfile != default_configfile:
+if nogui or configfile != default_configfile:
     # Read config file, and exit if any errors
     try:
         cfgdict = tftpcfg.getconfigstrict(scriptdirectory, configfile)
@@ -142,7 +143,7 @@ if options.nogui:
     print "Press CTRL-c to stop"
     # This runs the server engine, returns 0 if terminated with CTRL-c
     # or 1 if an error occurs.
-    result = tftp_engine.engine_loop(server, options.nogui)
+    result = tftp_engine.engine_loop(server, nogui)
     sys.exit(result)
 
 # Create a server with a gui
@@ -164,7 +165,7 @@ if error_text:
     server.text = error_text +"\n\nPress Start to enable the tftp server"
 
 # create a thread which runs the tftp engine
-thread.start_new_thread(tftp_engine.engine_loop, (server, options.nogui))
+thread.start_new_thread(tftp_engine.engine_loop, (server, nogui))
 
 # create the gui
 from tftp_package import gui_stuff
