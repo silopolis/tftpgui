@@ -1,4 +1,4 @@
-TFTPgui Version : 2.1
+TFTPgui Version : 3.0
 Date 20110726
 
 This program is a TFTP server.
@@ -9,27 +9,28 @@ and displays a gui interface allowing the user to stop and start the tftp server
 It provides a simple tftp server for engineers to download and upload
 configuration files from equipment such as routers and switches.
 
-Download the tar file tftpgui_2_1.tar : Untar it into a directory of your
+Download the tar file tftpgui_3_0.tar : Untar it into a directory of your
 choice, and running "python tftpgui.py" will run the program.
 
-Or if using Windows: download tftpgui_2_1.zip, unzip it and run python tftpgui.pyw
+Or if using Windows: download tftpgui_3_0.zip, unzip it and run python tftpgui.pyw
 
 Using the option --help on the command line will give further usage options.
 
 Windows users may need to replace the 'python' with the path to their Python
-interpreter, i.e. C:\Python27\python tftpgui.pyw
+interpreter, i.e. C:\Python32\python tftpgui.pyw
 
 It would also be possible to associate the .pyw extension with the python
 interpreter, in which case merely double clicking on the tftpgui.pyw file
 will run the program.
 
-tftpgui requires python 2.5 to 2.7 to be installed, and also the
+tftpgui_3_0 requires python 3.2 and later to be installed, and also the
 python tk modules.
 
 On Ubuntu/Debian this is package python-tk, on Widows it is built into
 Python and does not need to be separately installed.
 
-Note, this version does not yet work under python 3
+Note, this version does not work under python 2, please choose tftpgui_2_x.tar
+for a version that does.
 
 Usage
 
@@ -80,7 +81,7 @@ sets changes on the graphical interface. The file is read on startup,
 so the users changes are persistent. Most users need never look at,
 or edit the file.
 
-New in version 2:
+New in version 2 and 3:
 
 Using the --nogui option on the command line allows the server to be
 run without a graphical environment, in which case the configuration

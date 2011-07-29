@@ -4,7 +4,7 @@
 #
 # tftpgui.py  - a TFTP server
 #
-# Version : 2.2
+# Version : 3.0
 # Date : 20110725
 #
 # Author : Bernard Czenkusz
@@ -64,7 +64,7 @@ If 'listenipaddress' is set to a specific IP address of the computer
 only listen on the address given.
 
 If run with the --nogui option then the program has no dependencies other
-than standard Python (versions 2.5 to 2.7).  If run with a GUI then the
+than standard Python (version 3).  If run with a GUI then the
 script imports the Tkinter module, and some Gnu/Linux distributions may
 require this installing (package python-tk in Debian).
 
@@ -80,9 +80,9 @@ from optparse import OptionParser
 from tftp_package import tftpcfg, tftp_engine
 
 # Check the python version
-if not sys.version_info[0] == 2 and sys.version_info[1] >= 5:
+if not sys.version_info[0] == 3:
     print("Sorry, your python version is not compatable")
-    print("This program requires python 2.5, 2.6 or 2.7")
+    print("This program requires python 3.0 or later")
     print("Program exiting")
     sys.exit(1)
 
@@ -92,7 +92,7 @@ Without any options the program runs with a GUI.
 If no configuration file is specified, the program will look
 for tftpgui.cfg in the same directory as the %prog script."""
 
-parser = OptionParser(usage=usage, version="2.2")
+parser = OptionParser(usage=usage, version="3.0")
 parser.add_option("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
 (options, args) = parser.parse_args()

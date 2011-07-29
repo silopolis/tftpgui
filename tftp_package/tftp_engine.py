@@ -2,7 +2,7 @@
 #
 # tftp_engine.py  - runs the tftp server for TFTPgui
 #
-# Version : 2.2
+# Version : 3.0
 # Date : 20110725
 #
 # Author : Bernard Czenkusz
@@ -111,7 +111,7 @@ class ServerState(object):
         # and displayed to give server status messages
         self.text = """TFTPgui - a free tftp Server
 
-Version\t:  TFTPgui 2.2
+Version\t:  TFTPgui 3.0
 Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
