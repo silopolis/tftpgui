@@ -28,7 +28,7 @@
 #
 
 
-import tkinter, socket, os
+import tkinter, tkinter.filedialog, tkinter.messagebox, socket, os
 
 from tftp_package import tftpcfg
 
