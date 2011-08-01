@@ -369,7 +369,7 @@ class TFTPserver(asyncore.dispatcher):
         self.connection = None
         try:
             self.bind((server.listenipaddress, server.listenport))
-        except Exception, e:
+        except Exception as e:
             server.log_exception(e)
             if server.listenipaddress:
                 server.text = """Failed to bind to %s : %s
@@ -728,7 +728,7 @@ class SendData(Connection):
                 self.fp=open(self.filepath, "r")
             else:
                 raise DropPacket
-        except IOError, e:
+        except IOError as e:
             server.add_text("%s requested %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
@@ -841,7 +841,7 @@ class ReceiveData(Connection):
                 self.fp=open(self.filepath, "w")
             else:
                 raise DropPacket
-        except IOError, e:
+        except IOError as e:
             server.add_text("%s trying to send %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
@@ -957,7 +957,7 @@ def engine_loop(server, nogui):
                     server.serving = False
                     if nogui:
                         # Stop the service with an error message
-                        print server.text
+                        print(server.text)
                         raise
                 else:
                     # The tftp server is now listenning
@@ -993,7 +993,7 @@ def engine_loop(server, nogui):
             while server.engine_available and not server.serving:
                 # This loop runs while the engine is not serving
                 time.sleep(0.25)
-    except Exception, e:
+    except Exception as e:
         # log the exception and exit the main loop
         server.log_exception(e)
         return 1

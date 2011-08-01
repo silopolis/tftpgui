@@ -2,15 +2,15 @@
 #
 # ipv4_parse.py
 #
-# Version : 2.0
-# Date : 20061231
+# Version : 3.0
+# Date : 20110801
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
 
 #
 # ipv4_parse.py - Module to parse IP V4 addresses
-# Copyright (c) 2006 Bernard Czenkusz
+# Copyright (c) 2006,2011 Bernard Czenkusz
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -134,9 +134,6 @@ import sys
 # sys.argv[2] is the second argument - the subnet mask
 # contains sys.exit - used to return error codes
 
-import types
-# Used to check string and integer types
-
 # Create classes used for Exception Errors
 
 class IP_FORMAT_ERROR(Exception):
@@ -185,7 +182,7 @@ class IPAddressMask:
     def __init__(self,Address,Mask):
         """Check address and mask format, create attributes"""
         # Check the Address format is ok
-        if (type(Address)==types.ListType):
+        if (type(Address)==list):
             # The address is a list, check it is ok
             if(not IsAddressListOK(Address)): raise IP_FORMAT_ERROR
             self.AddressList=Address
@@ -310,10 +307,10 @@ def IsAddressListOK(AddressList):
     check this is of the correct format and return one if it is a valid
     and zero if it is invalid"""
     # Check a list has been passed
-    if (type(AddressList)!=types.ListType): return 0
+    if (type(AddressList)!=list): return 0
     if (len(AddressList)!=4): return 0
     for number in AddressList:
-        if (type(number)!=types.IntType): return 0
+        if (type(number)!=int): return 0
         if (number>255): return 0
         if (number<0): return 0
     return 1
@@ -329,7 +326,7 @@ def IsAddressStringOK(AddressString):
     check this is of the correct format and return one if it is a valid
     and zero if it is invalid"""
     # Check a string has been passed
-    if (type(AddressString)!=types.StringType): return 0
+    if (type(AddressString)!=str): return 0
     # check length
     if (len(AddressString)>15): return 0
     if (len(AddressString)<7): return 0
@@ -361,7 +358,7 @@ def IsMaskListOK(MaskList):
     This test considers [0,0,0,0] and [255,255,255,255] to be both valid
     but considers [255,254,255,0] to be invalid."""
     # Check a list has been passed
-    if (type(MaskList)!=types.ListType): return 0
+    if (type(MaskList)!=list): return 0
     # check length
     if (len(MaskList)!=4): return 0
     # So MaskList is a list of four items
@@ -371,7 +368,7 @@ def IsMaskListOK(MaskList):
     # 0, 128, 192, 224, 240, 248, 252, 254, 255
     AllowedValues=(0, 128, 192, 224, 240, 248, 252, 254, 255)
     for number in MaskList:
-        if (type(number)!=types.IntType): return 0
+        if (type(number)!=int): return 0
         if (number>255): return 0
         if (number<0): return 0
         # Initially assume not ok, and set to ok if number is one
@@ -412,7 +409,7 @@ def IsMaskStringOK(MaskString):
     This test considers 0.0.0.0 and 255.255.255.255 to be both valid
     but considers 255.254.255.0 to be invalid."""
     # Check a string has been passed
-    if (type(MaskString)!=types.StringType): return 0
+    if (type(MaskString)!=str): return 0
     # check length
     if (len(MaskString)>15): return 0
     if (len(MaskString)<7): return 0
@@ -449,7 +446,7 @@ def IsAddressSlashMaskStringOK(AddressSlashMaskString):
     as 192.168.1.2/24, check this is of the correct format
     and return one if it is a valid and zero if it is invalid"""
     # Check a string has been passed
-    if (type(AddressSlashMaskString)!=types.StringType): return 0
+    if (type(AddressSlashMaskString)!=str): return 0
     if (AddressSlashMaskString.count('/')!=1): return 0
     SplitAddress=AddressSlashMaskString.split('/')
     if (len(SplitAddress)!=2): return 0
@@ -488,7 +485,7 @@ def MaskBitsToList(Bits):
     Raises IP_FORMAT_ERROR if the number supplied is less than
     zero, or greater than 32."""
     # Check an integer has been passed
-    if (type(Bits)!=types.IntType): raise IP_FORMAT_ERROR
+    if (type(Bits)!=int): raise IP_FORMAT_ERROR
     if ((Bits<0) or (Bits>32)): raise IP_FORMAT_ERROR
     MaskList=[0,0,0,0]
     SumOfBits=(0,128,192,224,240,248,252,254,255)
@@ -611,14 +608,14 @@ def AnyMaskToBits(Mask):
     then convert it to bits, and return the bits as an
     integer between 0 and 32 inclusive."""
     # First check if the mask is given as an integer number
-    if (type(Mask)==types.IntType):
+    if (type(Mask)==int):
         if ((Mask<0) or (Mask>32)): raise IP_FORMAT_ERROR
         else: return Mask
     # Next check if it given as a list of integers such as [255,255,255,0]
-    if (type(Mask)==types.ListType): return MaskListToBits(Mask)
+    if (type(Mask)==list): return MaskListToBits(Mask)
     # So presumably its a string, if its anything else,
     # raise an exception
-    if (type(Mask)!=types.StringType): raise IP_FORMAT_ERROR
+    if (type(Mask)!=str): raise IP_FORMAT_ERROR
     # So its a string, check if its a string representation of
     # an integer number of bits
     if (len(Mask)<3):
@@ -898,7 +895,7 @@ if (__name__=="__main__"):
     # sys.argv should be of length three
     # since the first argument will be the script name.
     if (len(sys.argv) != 3):
-        print"""Check format of an IP4 address and mask.
+        print("""Check format of an IP4 address and mask.
 
 This can be run as a module, giving several IP parsing and
 checking functions, - see the module source code.
@@ -920,7 +917,7 @@ It checks the address and mask format, and returns an exit code of :
   1 if the address is a broadcast address
   2 if the address is a network address
   3 if the address is a valid host address (not a broadcast or network address) within a subnet
-  4 if the address is a valid address, but the mask is 32, so no subnet information is given"""
+  4 if the address is a valid address, but the mask is 32, so no subnet information is given""")
         sys.exit(0)
 
     # Make sure the arguments have no trailing spaces or newlines

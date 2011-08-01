@@ -2,7 +2,7 @@
 #
 # tftpcfg.py  - reads configuration file for TFTPgui
 #
-# Version : 2.0
+# Version : 3.0
 # Date : 20110718
 #
 # Author : Bernard Czenkusz
@@ -44,7 +44,7 @@ the setup values, these being:
 """
 
 from __future__ import with_statement
-import ConfigParser
+import configparser
 import os
 import sys
 
@@ -86,21 +86,21 @@ def getconfigstrict(scriptdirectory, configfile):
 
     if not os.path.isfile(configfile):
         CONFIGFILE = ""
-        raise ConfigError, "The configuration file does not exist"
+        raise ConfigError("The configuration file does not exist")
 
     # Now create a ConfigParser object, to read the config file
-    cfg=ConfigParser.ConfigParser()
+    cfg=configparser.ConfigParser()
     try:
         cfg.read(configfile)
     except Exception:
         CONFIGFILE = ""
-        raise ConfigError, "Unable to read the configuration file"
+        raise ConfigError("Unable to read the configuration file")
 
     # make sure cfg has the two sections Folders and IPsetup
     if not cfg.has_section("Folders"):
-        raise ConfigError, "The configuration file has no Folders section"
+        raise ConfigError("The configuration file has no Folders section")
     if not cfg.has_section("IPsetup"):
-        raise ConfigError, "The configuration file has no IPsetup section"
+        raise ConfigError("The configuration file has no IPsetup section")
 
     # Read each parameter in turn
 
@@ -108,56 +108,56 @@ def getconfigstrict(scriptdirectory, configfile):
     if cfg.has_option("Folders", "tftprootfolder"):
         cfgdict["tftprootfolder"]=os.path.abspath(cfg.get("Folders", "tftprootfolder"))
     else:
-        raise ConfigError, "tftprootfolder missing from configuration file"
+        raise ConfigError("tftprootfolder missing from configuration file")
 
     # logfolder
     if cfg.has_option("Folders", "logfolder"):
         cfgdict["logfolder"]=os.path.abspath(cfg.get("Folders", "logfolder"))
     else:
-        raise ConfigError, "logfolder missing from configuration file"
+        raise ConfigError("logfolder missing from configuration file")
 
     # anyclient
     if cfg.has_option("IPsetup", "anyclient"):
         try:
             cfgdict["anyclient"]=bool(int(cfg.get("IPsetup", "anyclient")))
         except Exception:
-            raise ConfigError, "Option anyclient in the config file is in error"
+            raise ConfigError("Option anyclient in the config file is in error")
     else:
-        raise ConfigError, "anyclient missing from configuration file"
+        raise ConfigError("anyclient missing from configuration file")
 
     # clientipaddress
     if cfg.has_option("IPsetup", "clientipaddress"):
         cfgdict["clientipaddress"]=cfg.get("IPsetup", "clientipaddress")
     else:
-        raise ConfigError, "clientipaddress missing from configuration file"
+        raise ConfigError("clientipaddress missing from configuration file")
 
     # clientmask
     if cfg.has_option("IPsetup", "clientmask"):
         try:
             cfgdict["clientmask"]=int(cfg.get("IPsetup", "clientmask"))
         except Exception:
-            raise ConfigError, "Option clientmask in the config file is in error"
+            raise ConfigError("Option clientmask in the config file is in error")
     else:
-        raise ConfigError, "clientmask missing from configuration file"
+        raise ConfigError("clientmask missing from configuration file")
 
     # listenipaddress
     if cfg.has_option("IPsetup", "listenipaddress"):
         cfgdict["listenipaddress"]=cfg.get("IPsetup", "listenipaddress")
     else:
-        raise ConfigError, "listenipaddress missing from configuration file"
+        raise ConfigError("listenipaddress missing from configuration file")
 
     # listenport
     if cfg.has_option("IPsetup", "listenport"):
         try:
             cfgdict["listenport"]=int(cfg.get("IPsetup", "listenport"))
         except Exception:
-            raise ConfigError, "Option listenport in the config file is in error"
+            raise ConfigError("Option listenport in the config file is in error")
     else:
-        raise ConfigError, "listenport missing from configuration file"
+        raise ConfigError("listenport missing from configuration file")
     # cfgdict now filled, check it
     status, message = validate(cfgdict)
     if not status:
-        raise ConfigError, message
+        raise ConfigError(message)
     # All ok, so return cfgdict
     return cfgdict
 
@@ -187,13 +187,13 @@ def getconfig(scriptdirectory, configfile):
     
     # Now create a ConfigParser object, to read and write
     # to the config file
-    cfg=ConfigParser.ConfigParser()
+    cfg=configparser.ConfigParser()
     try:
         if os.path.isfile(configfile):
             cfg.read(configfile)
     except Exception:
         CONFIGFILE = ""
-        raise ConfigError, "Unable to read the configuration file"
+        raise ConfigError("Unable to read the configuration file")
 
     # make sure cfg has the two sections Folders and IPsetup
     if not cfg.has_section("Folders"):
@@ -223,14 +223,14 @@ def getconfig(scriptdirectory, configfile):
         try:
             cfgdict["anyclient"]=bool(int(cfg.get("IPsetup", "anyclient")))
         except Exception:
-            raise ConfigError, "Option anyclient in the config file is in error"
+            raise ConfigError("Option anyclient in the config file is in error")
     else:
         write_new_config = True
         if cfg.has_option("IPsetup", "anysource"):
             try:
                 cfgdict["anyclient"]=bool(int(cfg.get("IPsetup", "anysource")))
             except Exception:
-                raise ConfigError, "Option anysource in the config file is in error"
+                raise ConfigError("Option anysource in the config file is in error")
             cfg.remove_option("IPsetup", "anysource")
         if cfgdict["anyclient"]:
             cfg.set("IPsetup", "anyclient", "1")
@@ -252,14 +252,14 @@ def getconfig(scriptdirectory, configfile):
         try:
             cfgdict["clientmask"]=int(cfg.get("IPsetup", "clientmask"))
         except Exception:
-            raise ConfigError, "Option clientmask in the config file is in error"
+            raise ConfigError("Option clientmask in the config file is in error")
     else:
         write_new_config = True
         if cfg.has_option("IPsetup", "mask"):
             try:
                 cfgdict["clientmask"]=int(cfg.get("IPsetup", "mask"))
             except Exception:
-                raise ConfigError, "Option clientmask in the config file is in error"
+                raise ConfigError("Option clientmask in the config file is in error")
             cfg.remove_option("IPsetup", "mask")
         cfg.set("IPsetup", "clientmask", str(cfgdict["clientmask"]))
 
@@ -275,21 +275,21 @@ def getconfig(scriptdirectory, configfile):
         try:
             cfgdict["listenport"]=int(cfg.get("IPsetup", "listenport"))
         except Exception:
-            raise ConfigError, "Option listenport in the config file is in error"
+            raise ConfigError("Option listenport in the config file is in error")
     else:
         write_new_config = True
         if cfg.has_option("IPsetup", "port"):
             try:
                 cfgdict["listenport"]=int(cfg.get("IPsetup", "port"))
             except Exception:
-                raise ConfigError, "Option port in the config file is in error"
+                raise ConfigError("Option port in the config file is in error")
             cfg.remove_option("IPsetup", "port")
         cfg.set("IPsetup", "listenport", str(cfgdict["listenport"]))
 
     # cfgdict now filled, check it
     status, message = validate(cfgdict)
     if not status:
-        raise ConfigError, message
+        raise ConfigError(message)
     # All ok, so return cfgdict
 
     # So cfg and dictionary cfgdict are now matched
@@ -300,7 +300,7 @@ def getconfig(scriptdirectory, configfile):
                 cfg.write(fp)
         except Exception:
             CONFIGFILE = ""
-            raise ConfigError, "Unable to update the config file"
+            raise ConfigError("Unable to update the config file")
 
     return cfgdict
 
@@ -479,6 +479,4 @@ def make_subnet(clientipaddress, clientmask):
         return ip.NetworkString
     else:
         return clientipaddress
-
-
 

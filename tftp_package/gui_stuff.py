@@ -2,14 +2,14 @@
 #
 # gui_stuff.py  - runs the GUI for TFTPgui
 #
-# Version : 2.0
+# Version : 3.0
 # Date : 20110718
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
 #
 #
-# Copyright (c) 2007, 2008,2009,2010,2011 Bernard Czenkusz
+# Copyright (c) 2007,2008,2009,2010,2011 Bernard Czenkusz
 #
 # This file is part of TFTPgui.
 #
@@ -28,7 +28,7 @@
 #
 
 
-import tkinter, tkFileDialog, tkMessageBox, socket, os
+import tkinter, socket, os
 
 from tftp_package import tftpcfg
 
@@ -331,13 +331,13 @@ be pressed to apply the values."""
         tkinter.Label(self, text=label_text).pack(side=tkinter.BOTTOM, anchor=tkinter.W)
 
     def BrowseRootFolder(self):
-        dirname = tkFileDialog.askdirectory(parent=self, mustexist=1, initialdir=self.tftprootfolder.get())
+        dirname = tkinter.filedialog.askdirectory(parent=self, mustexist=1, initialdir=self.tftprootfolder.get())
         if not dirname:
            return
         self.tftprootfolder.set(dirname)
 
     def BrowseLogFolder(self):
-        dirname = tkFileDialog.askdirectory(parent=self, mustexist=1, initialdir=self.logfolder.get())
+        dirname = tkinter.filedialog.askdirectory(parent=self, mustexist=1, initialdir=self.logfolder.get())
         if not dirname:
             return
         self.logfolder.set(dirname)
@@ -349,18 +349,18 @@ be pressed to apply the values."""
         try:
             clientmask = int(self.clientmask.get())
         except Exception:
-            tkMessageBox.showerror("Error", "The mask value should be an integer between 0 and 32")
+            tkinter.messagebox.showerror("Error", "The mask value should be an integer between 0 and 32")
             return
         try:
             listenport = int(self.listenport.get())
         except Exception:
-            tkMessageBox.showerror("Error", "The UDP port is incorrect")
+            tkinter.messagebox.showerror("Error", "The UDP port is incorrect")
             return
         anyclient = True if self.anyclient.get() == "1" else False
         clientipaddress = self.clientipaddress.get()
         status, message = tftpcfg.validate_client_ip_mask(clientipaddress, clientmask)
         if not status:
-            tkMessageBox.showerror("Error", message)
+            tkinter.messagebox.showerror("Error", message)
             return
         # convert the clientipaddress to a proper subnet if it is not already one.
         clientipaddress = tftpcfg.make_subnet(clientipaddress, clientmask)
@@ -376,7 +376,7 @@ be pressed to apply the values."""
         # validate
         status, message = tftpcfg.validate(cfgdict)
         if not status:
-            tkMessageBox.showerror("Error", message)
+            tkinter.messagebox.showerror("Error", message)
             return
         # Assign dictionary to the server
         self.server.set_from_config_dict(cfgdict)

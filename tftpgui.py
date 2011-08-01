@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ####### TFTPgui #######
 #
@@ -73,7 +73,7 @@ under Gnu/Linux the program must be run with administrator pivileges
 (ie using sudo) - as the OS requires this.
 """
 
-import os, sys, thread, time, argparse
+import os, sys, threading, time, argparse
 
 from tftp_package import tftpcfg, tftp_engine
 
@@ -101,13 +101,18 @@ parser.add_argument("-n", "--nogui", action="store_true", dest="nogui", default=
 
 parser.add_argument('--version', action='version', version='%(prog)s 3.0')
 
-parser.add_argument('configfile', dest="configfile", default=default_configfile,
-                  help="path to configuration file")
+parser.add_argument('configfile',
+                    nargs='?',
+                    default=default_configfile,
+                    help="path to configuration file")
 
 args = parser.parse_args()
 
 nogui = args.nogui
-configfile = args.configfile
+if args.configfile:
+    configfile = args.configfile
+else:
+    configfile = default_configfile
 
 # read configuration values
 error_text = ""
@@ -116,16 +121,16 @@ if nogui or configfile != default_configfile:
     # Read config file, and exit if any errors
     try:
         cfgdict = tftpcfg.getconfigstrict(scriptdirectory, configfile)
-    except tftpcfg.ConfigError, e:
-        print "Error in config file:"
-        print e
+    except tftpcfg.ConfigError as e:
+        print("Error in config file:")
+        print(e)
         sys.exit(1)
 else:
     # Gui option and default config, so can be more relaxed
     # Try to repair config file
     try:
         cfgdict = tftpcfg.getconfig(scriptdirectory, configfile)
-    except tftpcfg.ConfigError, e:
+    except tftpcfg.ConfigError as e:
         # On error fall back to defaults, but warn the user
         cfgdict = tftpcfg.get_defaults()
         error_text = "Error in config file:\n" + str(e) + "\nso using defaults"
@@ -135,12 +140,12 @@ if nogui:
     # this class records the server state, start with the server running
     server = tftp_engine.ServerState(cfgdict, serving=True)
     if server.listenipaddress :
-        print "TFTP server listening on %s:%s\nSee logs at:\n%s" % (server.listenipaddress,
+        print("TFTP server listening on %s:%s\nSee logs at:\n%s" % (server.listenipaddress,
                                                                     server.listenport,
-                                                                    server.logfolder)
+                                                                    server.logfolder))
     else:
-        print "TFTP server listening on port %s\nSee logs at:\n%s" % (server.listenport,server.logfolder)
-    print "Press CTRL-c to stop"
+        print("TFTP server listening on port %s\nSee logs at:\n%s" % (server.listenport,server.logfolder))
+    print("Press CTRL-c to stop")
     # This runs the server engine, returns 0 if terminated with CTRL-c
     # or 1 if an error occurs.
     result = tftp_engine.engine_loop(server, nogui)
@@ -150,11 +155,11 @@ if nogui:
 try:
     # Check tkinter can be imported
     import tkinter
-except Exception, e:
-    print """\
+except Exception:
+    print("""\
 Failed to import tkinter - required to run the GUI.
 Check the tKinter Python module has been installed on this machine.
-Alternatively, run with the --nogui option to operate without a GUI"""
+Alternatively, run with the --nogui option to operate without a GUI""")
     sys.exit(1)
 
 # this class records the server state, start with the server not running
@@ -165,12 +170,11 @@ if error_text:
     server.text = error_text +"\n\nPress Start to enable the tftp server"
 
 # create a thread which runs the tftp engine
-thread.start_new_thread(tftp_engine.engine_loop, (server, nogui))
+threading.Thread(target=tftp_engine.engine_loop, args=(server, nogui)).start()
 
 # create the gui
 from tftp_package import gui_stuff
 gui_stuff.create_gui(server)
-
 
 # when mainloop of gui ends, stop the server
 server.shutdown()
