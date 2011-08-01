@@ -318,7 +318,7 @@ def setconfig(cfgdict):
         
         # Now create a ConfigParser object, to read and write
         # to the config file
-        cfg=ConfigParser.ConfigParser()
+        cfg=configparser.ConfigParser()
         if os.path.exists(CONFIGFILE):
             # read it
             cfg.read(CONFIGFILE)

@@ -401,6 +401,7 @@ socket on this port."""
         # buffer size of 4100 is given, when negotiating block size, only sizes
         # less than 4100 will be accepted
         rx_data, rx_addr = self.recvfrom(4100)
+        # rx_data is a bytes sequence
         if len(rx_data)>4100:
             raise DropPacket
         try:
@@ -409,15 +410,15 @@ socket on this port."""
                 # a new first packet from a client.
                 # check first two bytes of rx_data
                 # should be 0001 or 0002
-                if rx_data[0] != "\x00":
+                if rx_data[0] != 0:
                     raise DropPacket
-                if rx_data[1] == "\x01" :
+                if rx_data[1] == 1 :
                     # Client is reading a file from the server
                     # create a SendData connection object and add it to
                     # the global CONNECTIONS dictionary
                     connection = SendData(self.server, rx_data, rx_addr)
                     add_connection(connection)
-                elif rx_data[1] == "\x02" :
+                elif rx_data[1] == 2 :
                     # Client is sending a file to the server
                     # create a ReceiveData connection object and add it to
                     # the global CONNECTIONS dictionary
@@ -502,16 +503,16 @@ class Connection(object):
         if len(rx_data)>512:
             raise DropPacket
         # Check header
-        if rx_data[0] != b"\x00":
+        if rx_data[0] != 0:
             raise DropPacket
-        if (rx_data[1] != b"\x01") and (rx_data[1] != b"\x02"):
+        if (rx_data[1] != 1) and (rx_data[1] != 2):
             raise DropPacket
         ### parse the filename received from the client ###
         # split the remaining rx_data into filename and mode
-        parts=rx_data[2:].split("\x00")
+        parts=rx_data[2:].split(b"\x00")
         if len(parts) < 2:
             raise DropPacket
-        self.filename=parts[0]
+        self.filename=parts[0].decode()
         self.mode=parts[1].lower()
         # mode must be "netascii" or "octet"
         if ((self.mode != b"netascii") and (self.mode != b"octet")):
@@ -520,21 +521,21 @@ class Connection(object):
         if (len(self.filename) < 1) or (len(self.filename)>256):
             raise DropPacket
          # filename must not start with a . character
-        if self.filename[0] == b".":
+        if self.filename[0] == ".":
             raise DropPacket
         # if filename starts with a \ or a / - strip it off
-        if self.filename[0] == b"\\" or self.filename[0] == b"/":
+        if self.filename[0] == "\\" or self.filename[0] == "/":
             if len(self.filename) == 1:
                 raise DropPacket
             self.filename=self.filename[1:]
         # filename must not start with a . character
-        if self.filename[0] == b".":
+        if self.filename[0] == ".":
             raise DropPacket    
         # The filename should only contain the printable characters, A-Z a-z 0-9 -_ or .
         # Temporarily replace any instances of the ._- characters with "x"
-        temp_filename=self.filename.replace(b".", b"x")
-        temp_filename=temp_filename.replace(b"-", b"x")
-        temp_filename=temp_filename.replace(b"_", b"x")
+        temp_filename=self.filename.replace(".", "x")
+        temp_filename=temp_filename.replace("-", "x")
+        temp_filename=temp_filename.replace("_", "x")
         # Check all characters are alphanumeric
         if not temp_filename.isalnum():
             raise DropPacket
@@ -544,7 +545,6 @@ class Connection(object):
                 raise DropPacket
         # so self.filename is the file to be acted upon, set the filepath
         self.filepath=os.path.join(server.tftprootfolder,self.filename)
-
         # check header for options
         self.request_options = {}
         self.options = {}
@@ -711,7 +711,7 @@ class SendData(Connection):
        the client is reading a file, the connection is of type RRQ"""
     def __init__(self, server, rx_data, rx_addr):
         Connection.__init__(self, server, rx_data, rx_addr)
-        if rx_data[1] != b"\x01" :
+        if rx_data[1] != 1 :
             raise DropPacket
         if not os.path.exists(self.filepath) or os.path.isdir(self.filepath):
             server.add_text("%s requested %s: file not found" % (rx_addr[0], self.filename))
@@ -772,12 +772,12 @@ class SendData(Connection):
         # if timer hasn't started, we may be in the process of sending
         if self.tx_data or not self.timer.started:
             return
-        if rx_data[0] != b"\x00":
+        if rx_data[0] != 0:
             # All packets should start 00, so ignore it
             return
         # This should be either an ack, or an error
         # Check if an error packet is received
-        if rx_data[1] == b"\x05" :
+        if rx_data[1] == 5 :
             # Its an error packet, log it and drop the connection
             try:
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
@@ -796,7 +796,7 @@ class SendData(Connection):
                 pass
             self.shutdown()
             return
-        if rx_data[1] != b"\x04" :
+        if rx_data[1] != 4 :
             # Should be 04, if not ignore it
             return
         # So this is an ack
@@ -824,7 +824,7 @@ class ReceiveData(Connection):
        the client is sending a file, the connection is of type WRQ"""
     def __init__(self, server, rx_data, rx_addr):
         Connection.__init__(self, server, rx_data, rx_addr)
-        if rx_data[1] != b"\x02" :
+        if rx_data[1] != 2 :
             raise DropPacket
         if os.path.exists(self.filepath):
             server.add_text("%s trying to send %s: file already exists" % (rx_addr[0], self.filename))
@@ -865,12 +865,12 @@ class ReceiveData(Connection):
         # if timer hasn't started, we may be in the process of sending
         if self.tx_data or not self.timer.started:
             return
-        if rx_data[0] != b"\x00":
+        if rx_data[0] != 0:
             # All packets should start 00, so ignore it
             return
         # This should be either data, or an error
         # Check if an error packet is received
-        if rx_data[1] == b"\x05" :
+        if rx_data[1] == 5:
             # Its an error packet, log it and drop the connection
             try:
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
@@ -889,7 +889,7 @@ class ReceiveData(Connection):
                 pass
             self.shutdown()
             return
-        if rx_data[1] != b"\x03":
+        if rx_data[1] != 3:
             # Should be 03, if not ignore it
             return
         # Check blockcount has incremented
