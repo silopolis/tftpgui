@@ -512,7 +512,7 @@ class Connection(object):
         parts=rx_data[2:].split(b"\x00")
         if len(parts) < 2:
             raise DropPacket
-        self.filename=parts[0].decode()
+        self.filename=str(parts[0], encoding='ascii')
         self.mode=parts[1].lower()
         # mode must be "netascii" or "octet"
         if ((self.mode != b"netascii") and (self.mode != b"octet")):
@@ -565,10 +565,12 @@ class Connection(object):
                 option_parts = parts[2:]
                 # option_parts should be option, value, option, value etc..
                 # put these into the self.request_options dictionary
-                for index, value in enumerate(option_parts):
+                for index, opt in enumerate(option_parts):
                     if not (index % 2):
-                        # even index
-                        self.request_options[value.lower()] = option_parts[index+1].lower()
+                        str_option = str(opt, encoding='ascii')
+                        str_value = str(option_parts[index+1], encoding='ascii')
+                        # add to dictionary
+                        self.request_options[str_option.lower()] = str_value.lower()
                 # self.request_options dictionary is now a dictionary of options requested
                 # from the client, make another dictionary, self.options of those options
                 # that this server will support
@@ -580,8 +582,8 @@ class Connection(object):
                     if blksize>7:
                         # This server only allows blocksizes up to 4096
                         self.blksize = blksize
-                        self.tx_data += b"blksize\x00" + bytes(blksize) + b"\x00"
-                        self.options["blksize"] = bytes(blksize)
+                        self.tx_data += b"blksize\x00" + bytes(str(blksize),encoding="ascii") + b"\x00"
+                        self.options["blksize"] = str(blksize)
                 # elif "nextoption" in self.options:
                     # for each further option to be implemented, use an elif chain here
                     # and add the option name and value to tx_data
@@ -755,8 +757,8 @@ class SendData(Connection):
             # The file is read, and no further data is available
             self.fp.close()
             self.fp = None
-            bytes = self.blksize*self.blkcount[2] + len(payload)
-            self.server.add_text("%s bytes of %s sent to %s" % (bytes, self.filename, self.rx_addr[0]))
+            bytes_sent = self.blksize*self.blkcount[2] + len(payload)
+            self.server.add_text("%s bytes of %s sent to %s" % (bytes_sent, self.filename, self.rx_addr[0]))
             # shutdown on receiving the next ack
             self.last_receive = True
         self.increment_blockcount()
@@ -782,15 +784,16 @@ class SendData(Connection):
             try:
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
+                    error_text = str(rx_data[4:-1], encoding="ascii")
                     self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
                                                                        self.rx_addr[1],
-                                                                       ord(rx_data[3]),
-                                                                       rx_data[4:-1]))
+                                                                       rx_data[3],
+                                                                       error_text))
                 else:
                     # No error text
                     self.server.add_text("Error from %s:%s code %s" % (self.rx_addr[0],
                                                                   self.rx_addr[1],
-                                                                  ord(rx_data[3])))
+                                                                  rx_data[3]))
             except Exception:
                 # If error trying to read error type, just ignore
                 pass
@@ -875,15 +878,16 @@ class ReceiveData(Connection):
             try:
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
+                    error_text = str(rx_data[4:-1], encoding="ascii")
                     self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
                                                                        self.rx_addr[1],
-                                                                       ord(rx_data[3]),
-                                                                       rx_data[4:-1]))
+                                                                       rx_data[3],
+                                                                       error_text))
                 else:
                     # No error text
                     self.server.add_text("Error from %s:%s code %s" % (self.rx_addr[0],
                                                                   self.rx_addr[1],
-                                                                  ord(rx_data[3])))
+                                                                  rx_data[3]))
             except Exception:
                 # If error trying to read error type, just ignore
                 pass
@@ -922,8 +926,8 @@ class ReceiveData(Connection):
             self.last_packet = True
             self.fp.close()
             self.fp=None
-            bytes = self.blksize*old_blockcount[2] + len(payload)
-            self.server.add_text("%s bytes of %s received from %s" % (bytes, self.filename, self.rx_addr[0]))
+            bytes_sent = self.blksize*old_blockcount[2] + len(payload)
+            self.server.add_text("%s bytes of %s received from %s" % (bytes_sent, self.filename, self.rx_addr[0]))
 
 
 #### The engine loop ####
