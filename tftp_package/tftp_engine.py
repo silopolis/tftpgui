@@ -727,7 +727,9 @@ class SendData(Connection):
             if self.mode == b"octet":
                 self.fp=open(self.filepath, "rb")
             elif self.mode == b"netascii":
-                self.fp=open(self.filepath, "r")
+                # Currently treating octet and netascii the same
+                # and simply reading binary data
+                self.fp=open(self.filepath, "rb")
             else:
                 raise DropPacket
         except IOError as e:
@@ -841,7 +843,9 @@ class ReceiveData(Connection):
             if self.mode == b"octet":
                 self.fp=open(self.filepath, "wb")
             elif self.mode == b"netascii":
-                self.fp=open(self.filepath, "w")
+                # Currently treating octet and netascii the same
+                # and simply writing binary data
+                self.fp=open(self.filepath, "wb")
             else:
                 raise DropPacket
         except IOError as e:
