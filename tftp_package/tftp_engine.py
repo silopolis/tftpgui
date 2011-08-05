@@ -724,14 +724,7 @@ class SendData(Connection):
             return
         # Open file for reading
         try:
-            if self.mode == b"octet":
-                self.fp=open(self.filepath, "rb")
-            elif self.mode == b"netascii":
-                # Currently treating octet and netascii the same
-                # and simply reading binary data
-                self.fp=open(self.filepath, "rb")
-            else:
-                raise DropPacket
+            self.fp=open(self.filepath, "rb")
         except IOError as e:
             server.add_text("%s requested %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
@@ -840,14 +833,7 @@ class ReceiveData(Connection):
             return
         # Open filename for writing
         try:
-            if self.mode == b"octet":
-                self.fp=open(self.filepath, "wb")
-            elif self.mode == b"netascii":
-                # Currently treating octet and netascii the same
-                # and simply writing binary data
-                self.fp=open(self.filepath, "wb")
-            else:
-                raise DropPacket
+            self.fp=open(self.filepath, "wb")
         except IOError as e:
             server.add_text("%s trying to send %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
@@ -855,6 +841,11 @@ class ReceiveData(Connection):
             # send and shutdown, don't wait for anything further
             self.last_packet = True
             return
+        # if this os accepts \r\n as line endings, then this is the same
+        # as netascii, and the received binary data can be saved directly
+        # so change the mode to octet
+        if self.mode == b"netascii" and os.linesep = "\r\n":
+            self.mode = b"octet"
         server.add_text("Receiving %s from %s" % (self.filename, rx_addr[0]))
         # Create next packet
         # If self.tx_data has contents, this will be because the parent Connections
@@ -923,8 +914,14 @@ class ReceiveData(Connection):
         self.re_tx_data=b"\x00\x04"+self.blkcount[1]
         self.tx_data=self.re_tx_data
         # Write the received data to file
-        if len(payload)>0:
-            self.fp.write(payload)
+        try:
+            self.write_data(payload)
+        except Exception:
+            # If error trying to write
+            self.tx_data=b"\x00\x05\x00\x03failed to save data\x00"
+            # send and shutdown, don't wait for anything further
+            self.last_packet = True
+            return
         if len(payload)<self.blksize:
             # flag all data is written and this ack is the last packet
             self.last_packet = True
@@ -932,6 +929,21 @@ class ReceiveData(Connection):
             self.fp=None
             bytes_sent = self.blksize*old_blockcount[2] + len(payload)
             self.server.add_text("%s bytes of %s received from %s" % (bytes_sent, self.filename, self.rx_addr[0]))
+
+    def write_data(self, payload):
+        """Write the payload to the open file, as this is winary mode"""
+         convert "
+        if not payload:
+            return
+        if self.mode == b"octet":
+            # write directly
+            self.fp.write(payload)
+            return
+        # data is netascii, and comes with /r/n line terminators
+        # remove all /r's and save data just with /n
+        new_payload = payload.replace(b'\r', b'')
+        if new_payload:
+            self.fp.write(new_payload)
 
 
 #### The engine loop ####
