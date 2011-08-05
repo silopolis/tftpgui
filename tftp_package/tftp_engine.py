@@ -841,11 +841,6 @@ class ReceiveData(Connection):
             # send and shutdown, don't wait for anything further
             self.last_packet = True
             return
-        # if this os accepts \r\n as line endings, then this is the same
-        # as netascii, and the received binary data can be saved directly
-        # so change the mode to octet
-        if self.mode == b"netascii" and os.linesep = "\r\n":
-            self.mode = b"octet"
         server.add_text("Receiving %s from %s" % (self.filename, rx_addr[0]))
         # Create next packet
         # If self.tx_data has contents, this will be because the parent Connections
@@ -931,17 +926,24 @@ class ReceiveData(Connection):
             self.server.add_text("%s bytes of %s received from %s" % (bytes_sent, self.filename, self.rx_addr[0]))
 
     def write_data(self, payload):
-        """Write the payload to the open file, as this is winary mode"""
-         convert "
+        """Write the payload to the open file.
+           If mode is octet, writes directly, if netascii then
+           corrects line separators"""
         if not payload:
             return
         if self.mode == b"octet":
             # write directly
             self.fp.write(payload)
             return
-        # data is netascii, and comes with /r/n line terminators
-        # remove all /r's and save data just with /n
+        # data is netascii, and comes with \r\n line terminators
+        # remove all \r's so data just has \n terminators
         new_payload = payload.replace(b'\r', b'')
+        # Where \r\x00 appeared, requires \r going back
+        new_payload = new_payload.replace(b'\x00', b'\r')
+        # if this os accepts \r\n as line endings, then
+        # replace \n with \r\n 
+        if os.linesep == "\r\n":
+            new_payload = new_payload.replace(b'\n', b'\r\n')
         if new_payload:
             self.fp.write(new_payload)
 
