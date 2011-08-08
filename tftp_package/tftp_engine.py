@@ -725,7 +725,7 @@ class SendData(Connection):
         # Open file for reading
         try:
             self.fp=open(self.filepath, "rb")
-        except IOError as e:
+        except IOError:
             server.add_text("%s requested %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x02Unable to open file\x00"
@@ -738,6 +738,8 @@ class SendData(Connection):
         # If self.tx_data has contents, this will be because the parent Connections
         # class is acknowledging an option
         # If there is nothing in self.tx_data, get the first payload
+        self.buffer = b""
+        self.next_byte = b""
         if not self.tx_data:
             # Make the first packet, call get_payload to put the data into tx_data
             self.get_payload()
@@ -746,19 +748,71 @@ class SendData(Connection):
     def get_payload(self):
         """Read file, a block of self.blksize bytes at a time which is put
            into re_tx_data and tx_data."""
-        assert not self.last_receive
-        payload=self.fp.read(self.blksize)
-        if len(payload) < self.blksize:
-            # The file is read, and no further data is available
-            self.fp.close()
-            self.fp = None
-            bytes_sent = self.blksize*self.blkcount[2] + len(payload)
-            self.server.add_text("%s bytes of %s sent to %s" % (bytes_sent, self.filename, self.rx_addr[0]))
-            # shutdown on receiving the next ack
-            self.last_receive = True
-        self.increment_blockcount()
-        self.re_tx_data=b"\x00\x03"+self.blkcount[1]+payload
-        self.tx_data=self.re_tx_data
+        try:
+            assert not self.last_receive
+            payload=self.read_data()
+            if len(payload) < self.blksize:
+                # The file is read, and no further data is available
+                self.fp.close()
+                self.fp = None
+                bytes_sent = self.blksize*self.blkcount[2] + len(payload)
+                self.server.add_text("%s bytes of %s sent to %s" % (bytes_sent, self.filename, self.rx_addr[0]))
+                # shutdown on receiving the next ack
+                self.last_receive = True
+            self.increment_blockcount()
+            self.re_tx_data=b"\x00\x03"+self.blkcount[1]+payload
+            self.tx_data=self.re_tx_data
+        except Exception:
+            self.server.add_text("Failed to read file %s" % self.filename)
+            # Send an error value
+            self.tx_data=b"\x00\x05\x00\x02Unable to read file\x00"
+            # send and shutdown, don't wait for anything further
+            self.last_packet = True
+
+    def read_data(self):
+        """Read data from the open file.
+           If mode is octet, reads directly, if netascii then
+           corrects line separators"""
+        if self.mode == b"octet":
+            return self.fp.read(self.blksize)
+        # mode is netascii, must put line ends in place
+        if self.blksize <= len(self.buffer):
+            # buffer is greater than blksize, just send data from buffer
+            # and reduce buffer size accordingly
+            data = self.buffer[:self.blksize]
+            self.buffer = self.buffer[self.blksize:]
+            return data
+        # buffer is less than blksize, read data from file
+        data = self.next_byte+self.fp.read(self.blksize-len(self.buffer))
+        # if os.linesep is \n, replace \r with \r\x00
+        # and then \n with \r\n
+        if os.linesep == "\n":
+            data = data.replace(b'\r', b'\r\x00')
+            data = data.replace(b'\n', b'\r\n')
+        else:
+            # line sep is \r\n, so replace any \r that is not followed
+            # by a \n with \r\x00
+            # first, if last byte is \r, must get next byte to check
+            # it isn't one of a \r\n pair
+            if data[-1] = 13:
+                # last byte is \r, so get next byte
+                self.next_byte = self.fp.read(1)
+                if self.next_byte = b"\n":
+                    data = data+self.next_byte
+                    self.next_byte = b""
+            data = data.replace(b'\r', b'\r\x00')
+            data = data.replace(b'\r\x00\n', b'\r\n')
+        # data is now formatted with proper line endings
+        # but it may be longer than blksize, so add it to a
+        # buffer
+        data = self.buffer+data
+        if len(data) <= self.blksize:
+            self.buffer = b""
+            return data
+        # data is greater than blksize, so send blksize of data
+        # back, and save remaining unsent data in the buffer
+        self.buffer = data[self.blksize:]
+        return data[:self.blksize]
 
 
     def incoming_data(self, rx_data):
@@ -834,7 +888,7 @@ class ReceiveData(Connection):
         # Open filename for writing
         try:
             self.fp=open(self.filepath, "wb")
-        except IOError as e:
+        except IOError:
             server.add_text("%s trying to send %s: unable to open file" % (rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x02Unable to open file\x00"
