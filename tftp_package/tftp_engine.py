@@ -794,20 +794,19 @@ class SendData(Connection):
             # by a \n with \r\x00
             # first, if last byte is \r, must get next byte to check
             # it isn't one of a \r\n pair
-            if data[-1] = 13:
+            if data[-1] == 13:
                 # last byte is \r, so get next byte
                 self.next_byte = self.fp.read(1)
-                if self.next_byte = b"\n":
+                if self.next_byte == b"\n":
                     data = data+self.next_byte
                     self.next_byte = b""
             data = data.replace(b'\r', b'\r\x00')
             data = data.replace(b'\r\x00\n', b'\r\n')
         # data is now formatted with proper line endings
-        # but it may be longer than blksize, so add it to a
-        # buffer
+        # add it to buffer
         data = self.buffer+data
+        self.buffer = b""
         if len(data) <= self.blksize:
-            self.buffer = b""
             return data
         # data is greater than blksize, so send blksize of data
         # back, and save remaining unsent data in the buffer
