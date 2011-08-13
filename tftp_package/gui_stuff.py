@@ -2,14 +2,14 @@
 #
 # gui_stuff.py  - runs the GUI for TFTPgui
 #
-# Version : 2.0
-# Date : 20110718
+# Version : 2.2
+# Date : 20110812
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
 #
 #
-# Copyright (c) 2007, 2008,2009,2010,2011 Bernard Czenkusz
+# Copyright (c) 2007,2008,2009,2010,2011 Bernard Czenkusz
 #
 # This file is part of TFTPgui.
 #
@@ -24,7 +24,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with VATStuff.  If not, see <http://www.gnu.org/licenses/>.
+#    along with TFTPgui.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 
