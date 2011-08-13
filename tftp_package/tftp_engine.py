@@ -2,7 +2,7 @@
 #
 # tftp_engine.py  - runs the tftp server for TFTPgui
 #
-# Version : 3.0
+# Version : 3.1
 # Date : 20110725
 #
 # Author : Bernard Czenkusz
@@ -24,7 +24,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with VATStuff.  If not, see <http://www.gnu.org/licenses/>.
+#    along with TFTPgui.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 
@@ -57,7 +57,7 @@ The remaining classes are only used within this module.
 
 import os, time, asyncore, socket, logging, logging.handlers, string
 
-from tftp_package import ipv4_parse
+from tftp_package import ipv4
 
 # CONNECTIONS is a dictionary of current connections
 # the keys are address tuples, the values are connection objects
@@ -111,7 +111,7 @@ class ServerState(object):
         # and displayed to give server status messages
         self.text = """TFTPgui - a free tftp Server
 
-Version\t:  TFTPgui 3.0
+Version\t:  TFTPgui 3.1
 Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
@@ -494,9 +494,9 @@ class Connection(object):
         "New connection, check header"
         # check if the caller is from an allowed address
         if not server.anyclient :
-            if not ipv4_parse.IsAddressInSubnet(rx_addr[0],
-                                                server.clientipaddress,
-                                                server.clientmask):
+            if not ipv4.address_in_subnet(rx_addr[0],
+                                          server.clientipaddress,
+                                          server.clientmask):
                 # The caller ip address is not within the subnet as defined by the
                 # clientipaddress and clientmask
                 raise DropPacket

@@ -2,8 +2,8 @@
 #
 # tftpcfg.py  - reads configuration file for TFTPgui
 #
-# Version : 3.0
-# Date : 20110718
+# Version : 3.1
+# Date : 20110813
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
@@ -24,7 +24,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with VATStuff.  If not, see <http://www.gnu.org/licenses/>.
+#    along with TFTPgui.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 """This module provides functions to parse and store
@@ -48,7 +48,7 @@ import configparser
 import os
 import sys
 
-from tftp_package import ipv4_parse
+from tftp_package import ipv4
 
 # Store configfile location as a global variable
 CONFIGFILE = ""
@@ -460,7 +460,8 @@ def validate_clientmask(clientmask):
 
 def validate_client_ip_mask(clientipaddress, clientmask):
     """Check clientipaddress and clientmask"""
-    if not ipv4_parse.parse(clientipaddress, clientmask):
+    broadcast_address, network_address = ipv4.parse(clientipaddress, clientmask)
+    if not broadcast_address:
         return False, "Client ip address and mask do not make a valid subnet"
     return True, None
 
@@ -468,15 +469,16 @@ def validate_listenipaddress(listenipaddress):
     """Check listenipaddress"""
     if not listenipaddress or listenipaddress == "0.0.0.0":
         return True, None
-    if not ipv4_parse.parse(listenipaddress, 32):
+    broadcast_address, network_address = ipv4.parse(listenipaddress, 32)
+    if not broadcast_address:
         return False, "Server listen ip address is not valid"
     return True, None
 
 def make_subnet(clientipaddress, clientmask):
     "Returns a subnet string"
     if clientmask != "32":
-        ip=ipv4_parse.IPAddressMask(clientipaddress, clientmask)
-        return ip.NetworkString
+        broadcast_address, network_address = ipv4.parse(clientipaddress, clientmask)
+        return network_address
     else:
         return clientipaddress
 
