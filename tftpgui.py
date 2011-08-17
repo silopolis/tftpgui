@@ -111,28 +111,38 @@ else:
 # read configuration values
 error_text = ""
 
-if options.nogui or configfile != default_configfile:
-    # Read config file, and exit if any errors
-    try:
-        cfgdict = tftpcfg.getconfigstrict(scriptdirectory, configfile)
-    except tftpcfg.ConfigError, e:
-        print "Error in config file:"
-        print e
-        sys.exit(1)
-else:
-    # Gui option and default config, so can be more relaxed
-    # Try to repair config file
+if (not options.nogui) and configfile == default_configfile:
+    # Gui option and default config, if the config file
+    # does not exist, or sections are missing, re-create it
     try:
         cfgdict = tftpcfg.getconfig(scriptdirectory, configfile)
     except tftpcfg.ConfigError, e:
         # On error fall back to defaults, but warn the user
         cfgdict = tftpcfg.get_defaults()
         error_text = "Error in config file:\n" + str(e) + "\nso using defaults"
+else:
+    # No gui, or not the default config file,
+    # therefore read it with more rigour and exit if any errors
+    try:
+        cfgdict = tftpcfg.getconfigstrict(scriptdirectory, configfile)
+    except tftpcfg.ConfigError, e:
+        print "Error in config file:"
+        print e
+        sys.exit(1)
+
+######## Create the server ######################
+# this makes a server object.
+# It is run in a loop, either using
+# tftp_engine.loop_nogui(server)
+# or
+# tftp_engine.loop(server)
+##################################################
+
+server = tftp_engine.ServerState(**cfgdict)
+
 
 if options.nogui:
-    # Create a server without a gui
-    # this class records the server state, start with the server running
-    server = tftp_engine.ServerState(cfgdict, serving=True)
+    # Run the server from the command line without a gui
     if server.listenipaddress :
         print "TFTP server listening on %s:%s\nSee logs at:\n%s" % (server.listenipaddress,
                                                                     server.listenport,
@@ -140,12 +150,16 @@ if options.nogui:
     else:
         print "TFTP server listening on port %s\nSee logs at:\n%s" % (server.listenport,server.logfolder)
     print "Press CTRL-c to stop"
-    # This runs the server engine, returns 0 if terminated with CTRL-c
-    # or 1 if an error occurs.
-    result = tftp_engine.engine_loop(server, options.nogui)
+    # loop_nogui runs the server loop,
+    # which exits if the the server cannot listen on the port given
+    # otherwise it exits on a CTRL-C keyboard interrupt
+    # returns 0 if terminated with CTRL-c
+    # or 1 if an error occurs
+    result = tftp_engine.loop_nogui(server)
     sys.exit(result)
 
-# Create a server with a gui
+
+# Run the server with a gui
 try:
     # Check Tkinter can be imported
     import Tkinter
@@ -156,23 +170,19 @@ Check the TKinter Python module has been installed on this machine.
 Alternatively, run with the --nogui option to operate without a GUI"""
     sys.exit(1)
 
-# this class records the server state, start with the server not running
-server = tftp_engine.ServerState(cfgdict, serving=False)
-
 # If an error occurred reading the config file, show it
 if error_text:
     server.text = error_text +"\n\nPress Start to enable the tftp server"
 
-# create a thread which runs the tftp engine
-thread.start_new_thread(tftp_engine.engine_loop, (server, options.nogui))
+# create a thread which runs the loop
+thread.start_new_thread(tftp_engine.loop, (server,))
 
 # create the gui
 from tftp_package import gui_stuff
 gui_stuff.create_gui(server)
 
-
-# when mainloop of gui ends, stop the server
-server.shutdown()
+# gui stopped, so stop the loop
+server.break_loop = True
 
 # give a moment for server thread to stop
 time.sleep(0.5)

@@ -59,23 +59,6 @@ import os, time, asyncore, socket, logging, logging.handlers, string
 
 from tftp_package import ipv4
 
-# CONNECTIONS is a dictionary of current connections
-# the keys are address tuples, the values are connection objects
-# start off with an empty dictionary 
-CONNECTIONS = {}
-
-def add_connection(connection):
-    "Adds the given connection to the connection dictionary"
-    global CONNECTIONS
-    if connection.rx_addr not in CONNECTIONS:
-        CONNECTIONS[connection.rx_addr] = connection
-
-def del_connection(connection):
-    """Deletes the given connection from the connection dictionary"""
-    global CONNECTIONS
-    if connection.rx_addr not in CONNECTIONS:
-        return
-    del CONNECTIONS[connection.rx_addr]
 
 
 class DropPacket(Exception):
@@ -87,7 +70,7 @@ class ServerState(object):
     """Defines a class which records the current server state
        and produces logs, and a text attribute for a gui"""
 
-    def __init__(self, cfgdict, serving=False):
+    def __init__(self, **cfgdict):
         """Creates a class which defines the state of the server
            serving = True if the server is to start up listenning
            Subsequently setting the serving attribute turns on
@@ -100,12 +83,28 @@ class ServerState(object):
              clientmask      - specific subnet mask of the client
              listenport      - tftp port to listen on
              listenipaddress - address to listen on"""
+
+        # self.serving is a settable/readable attribute
+        # and instructs the class to serve or not when poll()
+        # is called
+        # self_serving is a flag that gives this actual status
+        self.serving = False
+        self._serving = False
+        self.tftp_server = None
+        self._engine_available = True
+
+        # break_loop attribute is available, but not used by this class
+        # it can be used by another thread to flag the loop should be brocken
+        self.break_loop = False
+
         # set attributes from the dictionary, use assert to ensure
         # all attributes are present
         assert self.set_from_config_dict(cfgdict)
 
-        self.serving = serving
-        self.engine_available = True
+        # self._connections is a dictionary of current connections
+        # the keys are address tuples, the values are connection objects
+        # start off with an empty dictionary 
+        self._connections = {}
 
         # The attribute self.text is read by the gui at regular intervals
         # and displayed to give server status messages
@@ -116,11 +115,8 @@ Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
 
+Press Start to enable the tftp server
 """
-        if serving:
-            self.text += "Press Stop to disable the tftp server"
-        else:
-            self.text += "Press Start to enable the tftp server"
 
         # create logger
         self.logging_enabled = True
@@ -186,11 +182,50 @@ License\t:  GPLv3
         text_list.append(text_line)
         self.text = "\n".join(text_list)
 
+    def __len__(self):
+        "Returns the number of connections"
+        return len(self._connections)
+
+    def __getitem__(self, rx_addr):
+        "Returns the connection with the given rx_addr"
+        if rx_addr not in self._connections: raise IndexError
+        return self._connections[rx_addr]
+
+    def __contains__(self, rx_addr):
+        "Retrurns True if the rx_addr is associated with a connection"
+        if rx_addr in self._connections:
+            return True
+        else:
+            return None
+
+    def add_connection(self, connection):
+        "Adds the given connection to the _connections dictionary"
+        if connection.rx_addr not in self._connections:
+            self._connections[connection.rx_addr] = connection
+
+    def del_connection(self, connection):
+        """Deletes the given connection from the _connections dictionary"""
+        if connection.rx_addr not in self._connections:
+            return
+        del self._connections[connection.rx_addr]
+
+
+    def clear_all_connections(self):
+        "Clears all connections from the connection list"
+        connections_list = self.get_connections_list()
+        for connection in connections_list:
+            connection.shutdown()
+        self._connections = {}
+
+
     def get_connections(self):
-        """If connections are needed, they are available via this method
-           CONNECTIONS is a dictionary of current connections
-           the keys are address tuples, the values are connection objects"""
-        return CONNECTIONS
+        """If the self._connections dictionary is needed,
+           it is available via this method"""
+        return self._connections
+
+    def get_connections_list(self):
+        """Returns a list of current connection objects"""
+        return list(self._connections.values())
 
     def get_config_dict(self):
         "Returns a dictionary of the config attributes"
@@ -206,6 +241,9 @@ License\t:  GPLv3
     def set_from_config_dict(self, cfgdict):
         """Sets attributes from a given dictionary
            Returns True if all attributes supplied, or False if not"""
+        # attributes can only be changed while not serving
+        assert not self._serving
+        assert not self.serving
         all_attributes = True
         if "logfolder" in cfgdict:
             self.logfolder = cfgdict["logfolder"]
@@ -240,15 +278,80 @@ License\t:  GPLv3
 
     def shutdown(self):
         "Shuts down the server"
-        global CONNECTIONS
-        # remove all connections from CONNECTIONS
-        for connection in CONNECTIONS.values():
-            connection.shutdown()
-        CONNECTIONS = {}
-        self.serving = False
-        self.engine_available = False
+        if not self._engine_available:
+            return
+        self.stop_serving()
         self.add_text("TFTPgui application stopped")
-        self.log_disable()     
+        self.log_disable()
+        self._engine_available = False
+
+    def start_serving(self):
+        "Starts the server serving"
+        if not self._engine_available:
+            return
+        if self._serving:
+            self.serving = True
+            return
+        try:
+            self.tftp_server = TFTPserver(self)
+        except Exception, e:
+            self.stop_serving()
+            # re-raise the exception
+            raise
+        # the server is now bound to the ip address and port
+        self._serving = True
+        self.serving = True
+        if self.listenipaddress:
+            self.add_text(("Listenning on %s:%s" % (self.listenipaddress, self.listenport)), clear=True)
+        else:
+            self.add_text(("Listenning on port %s" % self.listenport), clear=True)
+
+    def stop_serving(self):
+        "Stops the server serving"
+        # server no longer running, stop listening
+        if self.tftp_server != None:
+            self.tftp_server.close()
+            self.tftp_server = None
+            self.add_text("Server stopped")
+        # remove all connections
+        self.clear_all_connections()
+        self._serving = False
+        self.serving = False
+
+
+    def poll(self):
+        """Polls asyncore if serving,
+           checks the attribute self.serving, turning on listenning
+           if True, or off if false"""
+        if not self._engine_available:
+            return
+        if self._serving:
+            # The server is listenning
+            if not self.serving:
+                # A request has been made to turn off the server
+                self.stop_serving()
+            else:
+                # poll asyncore and the connections
+                asyncore.poll()
+                # Poll each connection to run timers
+                connection_list = self.get_connections_list()
+                for connection in connection_list:
+                    connection.poll()
+                    asyncore.poll()
+        else:
+            # The server is not listenning
+            if self.serving:
+                # A request has been made to turn on the server
+                self.start_serving()
+            else:
+                time.sleep(0.25)
+        return
+
+    def get_engine_available(self):
+        """returns the value af self._engine_available"""
+        return self._engine_available
+
+    engine_available = property(get_engine_available)
 
 
 class STOPWATCH_ERROR(Exception):
@@ -389,22 +492,21 @@ socket on this port."""
             if os.name == "posix" and server.listenport<1000 and os.geteuid() != 0:
                 server.text += "\n(Ports below 1000 may need root or administrator privileges.)"
             server.text += "\nFurther error details will be given in the logs file."
-            raise NoService
+            raise NoService, "Unable to bind to given address and port"
 
     def handle_read(self):
         """Handle incoming data - Checks if this is an existing connection,
-           if not, creates a new connection object and adds it to global
-           CONNECTIONS dictionary.
+           if not, creates a new connection object and adds it to server
+           _connections dictionary.
            If it is, then calls the connection object incoming_data method
            for that object to handle it"""
-        global CONNECTIONS
         # buffer size of 4100 is given, when negotiating block size, only sizes
         # less than 4100 will be accepted
         rx_data, rx_addr = self.recvfrom(4100)
         if len(rx_data)>4100:
             raise DropPacket
         try:
-            if rx_addr not in CONNECTIONS:
+            if rx_addr not in self.server:
                 # This is not an existing connection, so must be
                 # a new first packet from a client.
                 # check first two bytes of rx_data
@@ -413,16 +515,12 @@ socket on this port."""
                     raise DropPacket
                 if rx_data[1] == "\x01" :
                     # Client is reading a file from the server
-                    # create a SendData connection object and add it to
-                    # the global CONNECTIONS dictionary
+                    # create a SendData connection object
                     connection = SendData(self.server, rx_data, rx_addr)
-                    add_connection(connection)
                 elif rx_data[1] == "\x02" :
                     # Client is sending a file to the server
-                    # create a ReceiveData connection object and add it to
-                    # the global CONNECTIONS dictionary
+                    # create a ReceiveData connection object
                     connection = ReceiveData(self.server, rx_data, rx_addr)
-                    add_connection(connection)
                 else:
                     # connection not recognised, just drop it
                     raise DropPacket
@@ -430,8 +528,8 @@ socket on this port."""
                 # This is an existing connection
                 # let the appropriate connection class handle it
                 # via its incoming_data method
-                CONNECTIONS[rx_addr].incoming_data(rx_data)
-        except DropPacket:
+                self.server[rx_addr].incoming_data(rx_data)
+        except DropPacket, e:
             # packet invalid in some way, drop it
             pass
 
@@ -439,20 +537,19 @@ socket on this port."""
         """Check connections, if one has data to send, send it
            keep sending until no more on that connection, then on next call to
            this function, try the next connection"""
-        global CONNECTIONS
         # self.connection is the current connection sending data
         # self.connection_list is a list of the connections,
         # test each in turn, popping the connection from the list
         # until none are left, then renew self.connection_list from
-        # CONNECTIONS - this is done to ensure each connection is
-        # handled in turn, and if CONNECTIONS is updated while one
+        # server._connections - this is done to ensure each connection is
+        # handled in turn, and if self._connections is updated while one
         # is being dealt with, any new connections are tested after
         # the current ones in the list.
         if not self.connection:
             # get the next connection in the list
             if not self.connection_list:
                 # but if no list, renew it now
-                self.connection_list = list(CONNECTIONS.values())
+                self.connection_list = self.server.get_connections_list()
             if not self.connection_list:
                 # no available connections, just return
                 return
@@ -539,7 +636,7 @@ class Connection(object):
         if not temp_filename.isalnum():
             raise DropPacket
         # Check this filename is not being altered by a ReceiveData connection
-        for conn in CONNECTIONS.values():
+        for conn in server.get_connections_list():
             if self.filename == conn.filename and isinstance(conn, ReceiveData):
                 raise DropPacket
         # so self.filename is the file to be acted upon, set the filepath
@@ -606,7 +703,7 @@ class Connection(object):
         self.rx_addr = rx_addr
         self.rx_data = rx_data
         # expired is a flag to indicate to the engine loop that this
-        # connection should be removed from the CONNECTIONS list
+        # connection should be removed from the self._connections list
         self.expired = False
         # tx_data is the data to be transmitted
         # and re_tx_data is a copy in case a re-transmission is needed
@@ -691,13 +788,13 @@ class Connection(object):
 
     def shutdown(self):
         """Shuts down the connection by closing the file pointer and
-           setting the expired flag to True.
-           The engine loop will then remove this instance from the CONNECTIONS
-           list and it will be garbage collected."""            
+           setting the expired flag to True.  Removes the connection from
+           the servers connections dictionary"""            
         if self.fp:
             self.fp.close()
         self.expired = True
         self.tx_data=""
+        self.server.del_connection(self)
 
     def __str__(self):
         "String value of connection, for diagnostic purposes"
@@ -719,6 +816,8 @@ class SendData(Connection):
             self.tx_data="\x00\x05\x00\x01File not found\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
+            # add connection to server
+            server.add_connection(self)
             return
         # Open file for reading
         try:
@@ -734,6 +833,8 @@ class SendData(Connection):
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
+            # add connection to server
+            server.add_connection(self)
             return
         server.add_text("Sending %s to %s" % (self.filename, rx_addr[0]))
         # If True this flag indicates shutdown on the next received packet 
@@ -744,6 +845,8 @@ class SendData(Connection):
         if not self.tx_data:
             # Make the first packet, call get_payload to put the data into tx_data
             self.get_payload()
+        # add connection to server
+        server.add_connection(self)
 
 
     def get_payload(self):
@@ -832,6 +935,8 @@ class ReceiveData(Connection):
             self.tx_data="\x00\x05\x00\x06File already exists\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
+            # add connection to server
+            server.add_connection(self)
             return
         # Open filename for writing
         try:
@@ -847,6 +952,8 @@ class ReceiveData(Connection):
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
+            # add connection to server
+            server.add_connection(self)
             return
         server.add_text("Receiving %s from %s" % (self.filename, rx_addr[0]))
         # Create next packet
@@ -856,6 +963,8 @@ class ReceiveData(Connection):
         if not self.tx_data:
             self.re_tx_data="\x00\x04"+self.blkcount[1]
             self.tx_data=self.re_tx_data
+        # add connection to server
+        server.add_connection(self)
 
 
     def incoming_data(self, rx_data):
@@ -926,81 +1035,59 @@ class ReceiveData(Connection):
             self.server.add_text("%s bytes of %s received from %s" % (bytes, self.filename, self.rx_addr[0]))
 
 
-#### The engine loop ####
+#### The loop ####
 
-def engine_loop(server, nogui):
-    """This loop runs while server.engine_available is True.
-       If the server is in listenning mode (server.serving True),
-       it creates the TFTPserver instance which is an
-       asyncore.dispatcher object.
-       This TFTPserver creates connections and stores them in the
-       global CONNECTIONS dictionary as new calls come in.
-       This engine then loops - each time calling asyncore.poll() and for each
-       connection object in CONNECTIONS it calls its poll() method,
-       which checks the connection timers.
-       It also checks for expired connections and removes them from CONNECTIONS.
-       If server.serving becomes False, it calls close on the TFTPserver, clears
-       the CONNECTIONS dictionary and then goes into a sleep loop, until
-       server.serving becomes True again.
+def loop_nogui(server):
+    """This loop is run if there is no gui
+       It sets server.serving attribute.
+       Then enters loop, calling server.poll()
+       If an exception
+       occurs, then exits loop
        """
-    global CONNECTIONS
-    CONNECTIONS = {}
-    tftp_server = None
+    server.serving = True
     try:
-        while server.engine_available:
-            if server.serving:
-                # start server
-                try:
-                    tftp_server = TFTPserver(server)
-                except NoService:
-                    # Failed to start the server
-                    server.serving = False
-                    if nogui:
-                        # Stop the service with an error message
-                        print server.text
-                        raise
-                else:
-                    # The tftp server is now listenning
-                    if server.listenipaddress:
-                        server.add_text(("Listenning on %s:%s" % (server.listenipaddress, server.listenport)), clear=True)
-                    else:
-                        server.add_text(("Listenning on port %s" % server.listenport), clear=True)
-            # engine loop continues while the engine is available
-            while server.engine_available and server.serving:
-                # This loop runs while the engine is serving
-                asyncore.poll()
-                # Poll each connection to see if it is ready to send anything
-                connection_list = list(CONNECTIONS.values())
-                for connection in connection_list:
-                    connection.poll()
-                    asyncore.poll()
-                # If any connection has expired, remove it from CONNECTIONS
-                for connection in connection_list:
-                    if connection.expired:
-                        del_connection(connection)
-                # make sure no reference is kept to old connections,
-                # so they can be garbage collected
-                connection_list = None
-            # server no longer running, stop listening
-            if tftp_server != None:
-                tftp_server.close()
-                tftp_server = None
-                server.add_text("Server stopped")
-            # remove all connections from connection list
-            for connection in CONNECTIONS.values():
-                connection.shutdown()
-            CONNECTIONS = {}
-            while server.engine_available and not server.serving:
-                # This loop runs while the engine is not serving
-                time.sleep(0.25)
+        # This is the main loop
+        while True:
+            server.poll()
+    except Exception, e:
+        # log the exception and exit the main loop
+        server.log_exception(e)
+        print server.text
+        return 1
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        # shutdown the server
+        server.shutdown()   
+    return 0
+
+def loop(server):
+    """This loop runs while server.engine_available is True.
+
+       First sets server.serving attribute dependent on the
+       start_server argument.
+       Then enters loop, calling server.poll()
+       If nogui is True, then a NoService exception will stop
+       the loop, otherwise it will not.
+       Any other exception, will stop the loop.
+       """
+
+    try:
+        # This is the main loop
+        while not server.break_loop:
+            try:
+                server.poll()
+            except NoService, e:
+                server.log_exception(e)
+                # Unable to bind
+                # GUI will handle this, so loop continues
     except Exception, e:
         # log the exception and exit the main loop
         server.log_exception(e)
         return 1
     except KeyboardInterrupt:
-        # The loop has been manually stopped, exit the program
         return 0
     finally:
         # shutdown the server
-        server.shutdown()   
+        server.shutdown()
     return 0

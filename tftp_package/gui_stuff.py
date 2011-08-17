@@ -108,8 +108,6 @@ class TopFrame(Tkinter.Frame):
             text="TFTP service port : " + str(self.server.listenport)
         self.StatusText["text"] = text
 
-
-
     def check_server(self):
             """Check if server available, and text messages from server"""
             if not self.server.engine_available:
@@ -139,13 +137,20 @@ class TopFrame(Tkinter.Frame):
 
     def start_server(self):
         "Start the server listenning"
-        self.server.serving=True
-        self.update_buttons()
+        try:
+            self.server.serving = True
+        except Exception, e:
+            return
+        self.StartButton["state"]=Tkinter.DISABLED
+        self.StopButton["state"]=Tkinter.NORMAL
+        self.SetupButton["state"]=Tkinter.DISABLED
 
     def stop_server(self):
         "Stop the server listenning"
-        self.server.serving=False
-        self.update_buttons()
+        self.server.serving = False
+        self.StartButton["state"]=Tkinter.NORMAL
+        self.StopButton["state"]=Tkinter.DISABLED
+        self.SetupButton["state"]=Tkinter.NORMAL
 
     def update_buttons(self):
         if self.server.serving:
