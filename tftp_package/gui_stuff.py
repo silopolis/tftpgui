@@ -114,7 +114,7 @@ class TopFrame(Tkinter.Frame):
                 self.exit_app()
             if self.server.text != self.TextArea["text"]:
                 self.TextArea["text"] = self.server.text
-            if self.server.get_connections():
+            if len(self.server):
                 self.bar_value += 1
                 if self.bar_value >=100:
                     self.bar_value = 0
@@ -139,7 +139,7 @@ class TopFrame(Tkinter.Frame):
         "Start the server listenning"
         try:
             self.server.serving = True
-        except Exception, e:
+        except Exception:
             return
         self.StartButton["state"]=Tkinter.DISABLED
         self.StopButton["state"]=Tkinter.NORMAL

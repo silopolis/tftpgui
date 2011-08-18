@@ -32,27 +32,19 @@
 tftp_engine.py - runs the TFTP server for TFTPgui
 
 Normally imported by tftpgui.py which creates an instance
-of the ServerState class defined here, and then calls the
-function engine_loop - which loops continuously running
-the server.
+of the ServerState class defined here, the instance holds
+the ip address and port to bind to.
 
-The ServerState class is called with argument 'serving',
-followed by a dictionary of configuration values taken
-from the configuration file.
+tftpgui.py then calls either:
+loop_nogui(server)
+or
+loop(server)
 
-The instance 'serving' attribute is initially set to the
-serving argument given (which is True or False), the attribute
-can then be set at anytime to turn listenning on or off.
-
-The engine loop is then called with arguments:
-engine_loop(server, nogui)
-server being the instance of the ServerState class created, and nogui
-should be True if no GUI is being run, or False if a GUI is run.
-
-Call the shutdown() method of the ServerState instance to completely
-shut down the server and exit the loop.
-
-The remaining classes are only used within this module.
+Both create a loop, calling the poll() method of the ServerState
+instance 'server', however loop_nogui exits if unable to bind to
+the port whereas loop(server) is intended to run with a gui in
+another thread, and keeps the loop working, so the user has the
+option to change port parameters.
 """
 
 import os, time, asyncore, socket, logging, logging.handlers, string
@@ -60,6 +52,22 @@ import os, time, asyncore, socket, logging, logging.handlers, string
 from tftp_package import ipv4
 
 
+def create_logger(logfolder):
+    "Create logger, return rootLogger on success, None on failure"
+    if not logfolder:
+        return None
+    try:
+        rootLogger = logging.getLogger('')
+        rootLogger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        logfile=os.path.join(logfolder,"tftplog")
+        loghandler = logging.handlers.RotatingFileHandler(logfile,
+                                                maxBytes=20000, backupCount=5)
+        loghandler.setFormatter(formatter)
+        rootLogger.addHandler(loghandler)
+    except Exception:
+        return None
+    return rootLogger
 
 class DropPacket(Exception):
     """Raised to flag the packet should be dropped"""
@@ -72,9 +80,6 @@ class ServerState(object):
 
     def __init__(self, **cfgdict):
         """Creates a class which defines the state of the server
-           serving = True if the server is to start up listenning
-           Subsequently setting the serving attribute turns on
-           and off the server.
            cfgdict is a dictionary read from the config file
              tftprootfolder  - path to a folder
              logfolder       - path to a folder
@@ -92,6 +97,7 @@ class ServerState(object):
         self._serving = False
         self.tftp_server = None
         self._engine_available = True
+        self.logging_enabled = False
 
         # break_loop attribute is available, but not used by this class
         # it can be used by another thread to flag the loop should be brocken
@@ -118,37 +124,13 @@ License\t:  GPLv3
 Press Start to enable the tftp server
 """
 
-        # create logger
-        self.logging_enabled = True
-        try:
-            # Dont want a logging failure to stop the server
-            self.rootLogger = logging.getLogger('')
-            self.rootLogger.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-            logfile=os.path.join(self.logfolder,"tftplog")
-            self.loghandler = logging.handlers.RotatingFileHandler(logfile,
-                                                    maxBytes=20000, backupCount=5)
-            self.loghandler.setFormatter(formatter)
-            self.rootLogger.addHandler(self.loghandler)
-        except Exception:
-            self.logging_enabled = False
-
     def log_exception(self, e):
         "Used to log exceptions"
         if self.logging_enabled:
             try:
                 logging.exception(e)
             except Exception:
-                self.log_disable()
-
-    def log_disable(self):
-        "close the logger"
-        if self.logging_enabled:
-            try:
-                self.rootLogger.removeHandler(self.loghandler)
-            except Exception:
-                pass
-        self.logging_enabled = False
+                self.logging_enabled = False
 
     def add_text(self, text_line, clear=False):
         """Adds text_line to the log, and also to self.text,
@@ -167,7 +149,7 @@ Press Start to enable the tftp server
             try:
                 logging.info(text_line)
             except Exception:
-                self.log_disable()
+                self.logging_enabled = False
 
         if clear:
             self.text = text_line
@@ -227,6 +209,18 @@ Press Start to enable the tftp server
         """Returns a list of current connection objects"""
         return list(self._connections.values())
 
+    def create_senddata_connection(self, rx_data, rx_addr):
+        "Creates a SendData connection object"
+        connection = SendData(self, rx_data, rx_addr)
+        # Add it to dictionary
+        self.add_connection(connection)
+
+    def create_receivedata_connection(self, rx_data, rx_addr):
+        "Creates a ReceiveData connection object"
+        connection = ReceiveData(self, rx_data, rx_addr)
+        # Add it to dictionary
+        self.add_connection(connection)
+
     def get_config_dict(self):
         "Returns a dictionary of the config attributes"
         cfgdict = { "tftprootfolder":self.tftprootfolder,
@@ -282,7 +276,6 @@ Press Start to enable the tftp server
             return
         self.stop_serving()
         self.add_text("TFTPgui application stopped")
-        self.log_disable()
         self._engine_available = False
 
     def start_serving(self):
@@ -294,7 +287,7 @@ Press Start to enable the tftp server
             return
         try:
             self.tftp_server = TFTPserver(self)
-        except Exception, e:
+        except Exception:
             self.stop_serving()
             # re-raise the exception
             raise
@@ -516,11 +509,11 @@ socket on this port."""
                 if rx_data[1] == "\x01" :
                     # Client is reading a file from the server
                     # create a SendData connection object
-                    connection = SendData(self.server, rx_data, rx_addr)
+                    self.server.create_senddata_connection(rx_data, rx_addr)
                 elif rx_data[1] == "\x02" :
                     # Client is sending a file to the server
                     # create a ReceiveData connection object
-                    connection = ReceiveData(self.server, rx_data, rx_addr)
+                    self.server.create_receivedata_connection(rx_data, rx_addr)
                 else:
                     # connection not recognised, just drop it
                     raise DropPacket
@@ -529,7 +522,7 @@ socket on this port."""
                 # let the appropriate connection class handle it
                 # via its incoming_data method
                 self.server[rx_addr].incoming_data(rx_data)
-        except DropPacket, e:
+        except DropPacket:
             # packet invalid in some way, drop it
             pass
 
@@ -541,10 +534,8 @@ socket on this port."""
         # self.connection_list is a list of the connections,
         # test each in turn, popping the connection from the list
         # until none are left, then renew self.connection_list from
-        # server._connections - this is done to ensure each connection is
-        # handled in turn, and if self._connections is updated while one
-        # is being dealt with, any new connections are tested after
-        # the current ones in the list.
+        # self.server.get_connections_list() - this is done to ensure
+        # each connection is handled in turn
         if not self.connection:
             # get the next connection in the list
             if not self.connection_list:
@@ -565,7 +556,6 @@ socket on this port."""
         if self.connection.expired or not self.connection.tx_data:
             self.connection = None
             return
-
 
     def handle_connect(self):
         pass
@@ -753,8 +743,7 @@ class Connection(object):
 
 
     def poll(self):
-        """Polled by the main loop.
-           Checks connection is no longer than 30 seconds between packets.
+        """Checks connection is no longer than 30 seconds between packets.
            Checks TTL timer, resend on timeouts, or if too many timeouts
            send an error packet and flag last_packet as True"""
         if time.time()-self.connection_time > 30.0:
@@ -784,7 +773,6 @@ class Connection(object):
         self.server.add_text("Connection to %s:%s terminated due to timeout" % self.rx_addr)
         # send and shutdown, don't wait for anything further
         self.last_packet = True
-
 
     def shutdown(self):
         """Shuts down the connection by closing the file pointer and
@@ -816,8 +804,6 @@ class SendData(Connection):
             self.tx_data="\x00\x05\x00\x01File not found\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
-            # add connection to server
-            server.add_connection(self)
             return
         # Open file for reading
         try:
@@ -833,8 +819,6 @@ class SendData(Connection):
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
-            # add connection to server
-            server.add_connection(self)
             return
         server.add_text("Sending %s to %s" % (self.filename, rx_addr[0]))
         # If True this flag indicates shutdown on the next received packet 
@@ -845,9 +829,6 @@ class SendData(Connection):
         if not self.tx_data:
             # Make the first packet, call get_payload to put the data into tx_data
             self.get_payload()
-        # add connection to server
-        server.add_connection(self)
-
 
     def get_payload(self):
         """Read file, a block of self.blksize bytes at a time which is put
@@ -865,7 +846,6 @@ class SendData(Connection):
         self.increment_blockcount()
         self.re_tx_data="\x00\x03"+self.blkcount[1]+payload
         self.tx_data=self.re_tx_data
-
 
     def incoming_data(self, rx_data):
         """Handles incoming data - these should be acks from the client
@@ -935,8 +915,6 @@ class ReceiveData(Connection):
             self.tx_data="\x00\x05\x00\x06File already exists\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
-            # add connection to server
-            server.add_connection(self)
             return
         # Open filename for writing
         try:
@@ -952,8 +930,6 @@ class ReceiveData(Connection):
             self.tx_data="\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
-            # add connection to server
-            server.add_connection(self)
             return
         server.add_text("Receiving %s from %s" % (self.filename, rx_addr[0]))
         # Create next packet
@@ -963,9 +939,6 @@ class ReceiveData(Connection):
         if not self.tx_data:
             self.re_tx_data="\x00\x04"+self.blkcount[1]
             self.tx_data=self.re_tx_data
-        # add connection to server
-        server.add_connection(self)
-
 
     def incoming_data(self, rx_data):
         """Handles incoming data, these should contain the data to be saved to a file"""
@@ -1044,6 +1017,12 @@ def loop_nogui(server):
        If an exception
        occurs, then exits loop
        """
+    # create logger
+    rootLogger = create_logger(server.logfolder)
+    if rootLogger is not None:
+        server.logging_enabled = True
+
+    # set server to listen
     server.serving = True
     try:
         # This is the main loop
@@ -1062,15 +1041,17 @@ def loop_nogui(server):
     return 0
 
 def loop(server):
-    """This loop runs while server.engine_available is True.
+    """This loop runs while server.break_loop is False.
+       Intended to run with a GUI in another thread,
+       it does not exit the loop if a NoService
+       exception occurs.
+       If the other thread sets server.break_loop to
+       True, then the loop exists and shuts down the server"""
 
-       First sets server.serving attribute dependent on the
-       start_server argument.
-       Then enters loop, calling server.poll()
-       If nogui is True, then a NoService exception will stop
-       the loop, otherwise it will not.
-       Any other exception, will stop the loop.
-       """
+    # create logger
+    rootLogger = create_logger(server.logfolder)
+    if rootLogger is not None:
+        server.logging_enabled = True
 
     try:
         # This is the main loop
@@ -1090,4 +1071,42 @@ def loop(server):
     finally:
         # shutdown the server
         server.shutdown()
+    return 0
+
+
+def loop_multiserver(server_list):
+    """This loop is run with a list of servers
+
+       This is an experimental loop, showing that if multiple servers
+       are given (each with different ports) - then multiple tftp servers
+       can operate
+       """
+
+    # create logger, using logfolder given by the
+    # first server in the list
+    rootLogger = create_logger(server_list[0].logfolder)
+    if rootLogger is not None:
+        for server in server_list:
+            server.logging_enabled = True
+
+    # set all servers as listenning
+    for server in server_list:
+        server.serving = True
+
+    try:
+        # This is the main loop
+        while True:
+            for server in server_list:
+                server.poll()
+    except Exception, e:
+        # log the exception and exit the main loop
+        server.log_exception(e)
+        print server.text
+        return 1
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        # shutdown the servers
+        for server in server_list:
+            server.shutdown()   
     return 0

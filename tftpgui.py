@@ -163,7 +163,7 @@ if options.nogui:
 try:
     # Check Tkinter can be imported
     import Tkinter
-except Exception, e:
+except Exception:
     print """\
 Failed to import Tkinter - required to run the GUI.
 Check the TKinter Python module has been installed on this machine.
