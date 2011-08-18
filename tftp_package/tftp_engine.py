@@ -624,7 +624,7 @@ class Connection(object):
         if not temp_filename.isalnum():
             raise DropPacket
         # Check this filename is not being altered by a ReceiveData connection
-        for conn in CONNECTIONS.values():
+        for conn in server.get_connections_list():
             if self.filename == conn.filename and isinstance(conn, ReceiveData):
                 raise DropPacket
         # so self.filename is the file to be acted upon, set the filepath
