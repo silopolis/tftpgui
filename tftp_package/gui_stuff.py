@@ -116,7 +116,7 @@ class TopFrame(tkinter.Frame):
                 self.exit_app()
             if self.server.text != self.TextArea["text"]:
                 self.TextArea["text"] = self.server.text
-            if self.server.get_connections():
+            if len(self.server):
                 self.bar_value += 1
                 if self.bar_value >=100:
                     self.bar_value = 0
@@ -139,13 +139,20 @@ class TopFrame(tkinter.Frame):
 
     def start_server(self):
         "Start the server listenning"
-        self.server.serving=True
-        self.update_buttons()
+        try:
+            self.server.serving = True
+        except Exception:
+            return
+        self.StartButton["state"]=tkinter.DISABLED
+        self.StopButton["state"]=tkinter.NORMAL
+        self.SetupButton["state"]=tkinter.DISABLED
 
     def stop_server(self):
         "Stop the server listenning"
         self.server.serving=False
-        self.update_buttons()
+        self.StartButton["state"]=tkinter.NORMAL
+        self.StopButton["state"]=tkinter.DISABLED
+        self.SetupButton["state"]=tkinter.NORMAL
 
     def update_buttons(self):
         if self.server.serving:
