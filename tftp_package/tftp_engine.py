@@ -64,7 +64,7 @@ def create_logger(logfolder):
         loghandler = logging.handlers.RotatingFileHandler(logfile,
                                                 maxBytes=20000, backupCount=5)
         loghandler.setFormatter(formatter)
-        rootLogger.addHandler(self.loghandler)
+        rootLogger.addHandler(loghandler)
     except Exception:
         return None
     return rootLogger
