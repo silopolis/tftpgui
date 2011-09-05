@@ -139,10 +139,7 @@ class TopFrame(tkinter.Frame):
 
     def start_server(self):
         "Start the server listenning"
-        try:
-            self.server.serving = True
-        except Exception:
-            return
+        self.server.serving = True
         self.StartButton["state"]=tkinter.DISABLED
         self.StopButton["state"]=tkinter.NORMAL
         self.SetupButton["state"]=tkinter.DISABLED

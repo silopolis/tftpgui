@@ -43,7 +43,6 @@ the setup values, these being:
  listenipaddress - address to listen on
 """
 
-from __future__ import with_statement
 import configparser
 import os
 import sys
