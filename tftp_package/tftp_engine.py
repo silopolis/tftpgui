@@ -52,7 +52,7 @@ import os, time, asyncore, socket, logging, logging.handlers, string
 from tftp_package import ipv4
 
 
-def create_logger(logfolder):
+def _create_logger(logfolder):
     "Create logger, return rootLogger on success, None on failure"
     if not logfolder:
         return None
@@ -213,11 +213,11 @@ Press Start to enable the tftp server
         if rx_data[1] == 1 :
             # Client is reading a file from the server
             # create a SendData connection object
-            connection = SendData(self, rx_data, rx_addr)
+            connection = _SendData(self, rx_data, rx_addr)
         elif rx_data[1] == 2 :
             # Client is sending a file to the server
             # create a ReceiveData connection object
-            connection = ReceiveData(self, rx_data, rx_addr)
+            connection = _ReceiveData(self, rx_data, rx_addr)
         else:
             # connection not recognised, just drop it
             raise DropPacket
@@ -287,7 +287,7 @@ Press Start to enable the tftp server
             self.serving = True
             return
         try:
-            self.tftp_server = TFTPserver(self)
+            self.tftp_server = _TFTPserver(self)
         except Exception:
             self.stop_serving()
             # re-raise the exception
@@ -351,8 +351,8 @@ class STOPWATCH_ERROR(Exception):
     """time_it should only be called if start has been called first."""
     pass
 
-class Stopwatch(object):
-    """stopwatch class calculates the TTL - the time to live in seconds
+class _Stopwatch(object):
+    """This class calculates the TTL - the time to live in seconds
     
     The start() method should be called, each time a packet is transmitted
     which expects a reply, and then the time_it() method should be called
@@ -449,7 +449,7 @@ class NoService(Exception):
     """Raised to flag the service is unavailable"""
     pass
 
-class TFTPserver(asyncore.dispatcher):
+class _TFTPserver(asyncore.dispatcher):
     """Class for binding the tftp listenning socket
        asyncore.poll will call the handle_read method whenever data is
        available to be read, and handle_write to see if data is to be transmitted"""
@@ -573,7 +573,7 @@ socket on this port."""
 # 5         Error                  (ERROR)
 # 6         Option Acknowledgement (OACK)
 
-class Connection(object):
+class _Connection(object):
     """Stores details of a connection, acts as a parent to
        SendData and ReceiveData classes"""
 
@@ -702,7 +702,7 @@ class Connection(object):
         self.re_tx_data = self.tx_data
         # This timer is used to measure if a packet has timed out, it
         # increases as the round trip time increases
-        self.timer = Stopwatch()
+        self.timer = _Stopwatch()
         self.timeouts = 0
         self.last_packet = False
 
@@ -793,11 +793,11 @@ class Connection(object):
 
 
 
-class SendData(Connection):
+class _SendData(_Connection):
     """A connection which handles file sending
        the client is reading a file, the connection is of type RRQ"""
     def __init__(self, server, rx_data, rx_addr):
-        Connection.__init__(self, server, rx_data, rx_addr)
+        _Connection.__init__(self, server, rx_data, rx_addr)
         if rx_data[1] != 1 :
             raise DropPacket
         if not os.path.exists(self.filepath) or os.path.isdir(self.filepath):
@@ -953,11 +953,11 @@ class SendData(Connection):
         self.get_payload()
         
 
-class ReceiveData(Connection):
+class _ReceiveData(_Connection):
     """A connection which handles file receiving
        the client is sending a file, the connection is of type WRQ"""
     def __init__(self, server, rx_data, rx_addr):
-        Connection.__init__(self, server, rx_data, rx_addr)
+        _Connection.__init__(self, server, rx_data, rx_addr)
         if rx_data[1] != 2 :
             raise DropPacket
         if os.path.exists(self.filepath):
@@ -1093,7 +1093,7 @@ def loop_nogui(server):
        occurs, then exits loop
        """
     # create logger
-    rootLogger = create_logger(server.logfolder)
+    rootLogger = _create_logger(server.logfolder)
     if rootLogger is not None:
         server.logging_enabled = True
 
@@ -1126,7 +1126,7 @@ def loop(server):
        If the other thread sets server.break_loop to
        True, then the loop exists and shuts down the server"""
     # create logger
-    rootLogger = create_logger(server.logfolder)
+    rootLogger = _create_logger(server.logfolder)
     if rootLogger is not None:
         server.logging_enabled = True
 
