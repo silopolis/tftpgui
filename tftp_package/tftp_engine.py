@@ -180,11 +180,6 @@ Press Start to enable the tftp server
         else:
             return None
 
-    def add_connection(self, connection):
-        "Adds the given connection to the _connections dictionary"
-        if connection.rx_addr not in self._connections:
-            self._connections[connection.rx_addr] = connection
-
     def del_connection(self, connection):
         """Deletes the given connection from the _connections dictionary"""
         if connection.rx_addr not in self._connections:
@@ -199,27 +194,35 @@ Press Start to enable the tftp server
             connection.shutdown()
         self._connections = {}
 
-
-    def get_connections(self):
-        """If the self._connections dictionary is needed,
-           it is available via this method"""
-        return self._connections
-
     def get_connections_list(self):
         """Returns a list of current connection objects"""
         return list(self._connections.values())
 
-    def create_senddata_connection(self, rx_data, rx_addr):
-        "Creates a SendData connection object"
-        connection = SendData(self, rx_data, rx_addr)
-        # Add it to dictionary
-        self.add_connection(connection)
 
-    def create_receivedata_connection(self, rx_data, rx_addr):
-        "Creates a ReceiveData connection object"
-        connection = ReceiveData(self, rx_data, rx_addr)
+    def create_connection(self, rx_data, rx_addr):
+        """Creates either a ReceiveData or SendData connection object
+           and adds it to dictionary"""
+        if rx_addr in self._connections:
+            # connection already in the _connections dictionary
+            raise DropPacket
+        # check first two bytes of rx_data
+        # should be 0001 or 0002
+        if rx_data[0] != "\x00":
+            raise DropPacket
+        if rx_data[1] == "\x01":
+            # Client is reading a file from the server
+            # create a SendData connection object
+            connection = SendData(self, rx_data, rx_addr)
+        elif rx_data[1] == "\x02":
+            # Client is sending a file to the server
+            # create a ReceiveData connection object
+            connection = ReceiveData(self, rx_data, rx_addr)
+        else:
+            # connection not recognised, just drop it
+            raise DropPacket
         # Add it to dictionary
-        self.add_connection(connection)
+        self._connections[rx_addr] = connection
+
 
     def get_config_dict(self):
         "Returns a dictionary of the config attributes"
@@ -323,22 +326,21 @@ Press Start to enable the tftp server
             if not self.serving:
                 # A request has been made to turn off the server
                 self.stop_serving()
-            else:
-                # poll asyncore and the connections
+                return
+            # poll asyncore and the connections
+            asyncore.poll()
+            # Poll each connection to run timers
+            connection_list = self.get_connections_list()
+            for connection in connection_list:
+                connection.poll()
                 asyncore.poll()
-                # Poll each connection to run timers
-                connection_list = self.get_connections_list()
-                for connection in connection_list:
-                    connection.poll()
-                    asyncore.poll()
-        else:
-            # The server is not listenning
-            if self.serving:
-                # A request has been made to turn on the server
-                self.start_serving()
-            else:
-                time.sleep(0.25)
-        return
+            return
+        # self._serving must be False, but maybe self.serving has been set
+        if self.serving:
+            # The server is not serving, but the attribute
+            # self.serving is True, so a request
+            # has been made to turn on the server
+            self.start_serving()
 
     def get_engine_available(self):
         """returns the value af self._engine_available"""
@@ -502,21 +504,7 @@ socket on this port."""
             if rx_addr not in self.server:
                 # This is not an existing connection, so must be
                 # a new first packet from a client.
-                # check first two bytes of rx_data
-                # should be 0001 or 0002
-                if rx_data[0] != "\x00":
-                    raise DropPacket
-                if rx_data[1] == "\x01" :
-                    # Client is reading a file from the server
-                    # create a SendData connection object
-                    self.server.create_senddata_connection(rx_data, rx_addr)
-                elif rx_data[1] == "\x02" :
-                    # Client is sending a file to the server
-                    # create a ReceiveData connection object
-                    self.server.create_receivedata_connection(rx_data, rx_addr)
-                else:
-                    # connection not recognised, just drop it
-                    raise DropPacket
+                self.server.create_connection(rx_data, rx_addr)
             else:
                 # This is an existing connection
                 # let the appropriate connection class handle it
@@ -526,36 +514,50 @@ socket on this port."""
             # packet invalid in some way, drop it
             pass
 
-    def handle_write(self):
-        """Check connections, if one has data to send, send it
-           keep sending until no more on that connection, then on next call to
-           this function, try the next connection"""
+
+    def writable(self):
+        "If data available to write, return True"
         # self.connection is the current connection sending data
         # self.connection_list is a list of the connections,
         # test each in turn, popping the connection from the list
         # until none are left, then renew self.connection_list from
         # self.server.get_connections_list() - this is done to ensure
         # each connection is handled in turn
+        if self.connection:
+            if (not self.connection.expired) and self.connection.tx_data:
+                # there is a current connection, and it has data to send
+                return True
+            else:
+                # the current connection has no data to send
+                # go to next connection on the list
+                self.connection = None
+        # there is no current connection, check if one is available
+        # get the next connection in the list
+        if not self.connection_list:
+            # but if no list, renew it now
+            if not len(self.server):
+                # No connections available
+                return False
+            self.connection_list = self.server.get_connections_list()
+        # so one or more connections exist in the list
+        # get a connection, and remove it from the list
+        self.connection = self.connection_list.pop()
+        if self.connection.tx_data:
+            return True
+        else:
+            return False
+
+    def handle_write(self):
+        """Send any data on the current connection"""
         if not self.connection:
-            # get the next connection in the list
-            if not self.connection_list:
-                # but if no list, renew it now
-                self.connection_list = self.server.get_connections_list()
-            if not self.connection_list:
-                # no available connections, just return
-                return
-            # so one or more connections exist in the list
-            # get a connection, and remove it from the list
-            self.connection = self.connection_list.pop()
-        if self.connection.expired or not self.connection.tx_data:
-            self.connection = None
+            # no connection current
             return
-        # so current connection has data to send, send it
+        # so send any data on the current connection
         self.connection.send_data(self.sendto)
-        # And if all data sent, or connection shutdown
         if self.connection.expired or not self.connection.tx_data:
+            # the current connection has no data to send
+            # go to next connection on the list
             self.connection = None
-            return
 
     def handle_connect(self):
         pass
@@ -1028,6 +1030,9 @@ def loop_nogui(server):
         # This is the main loop
         while True:
             server.poll()
+            if not len(server):
+                # There are no connections so put in a sleep
+                time.sleep(0.1)
     except Exception, e:
         # log the exception and exit the main loop
         server.log_exception(e)
@@ -1058,6 +1063,14 @@ def loop(server):
         while not server.break_loop:
             try:
                 server.poll()
+                if server.serving:
+                    if not len(server):
+                        # The server is serving, but there are no
+                        # connections so put in a sleep
+                        time.sleep(0.1)
+                else:
+                    # if the server is not serving, put a sleep in the loop
+                    time.sleep(0.25)
             except NoService, e:
                 server.log_exception(e)
                 # Unable to bind
