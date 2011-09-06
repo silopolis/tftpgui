@@ -296,9 +296,9 @@ Press Start to enable the tftp server
         self._serving = True
         self.serving = True
         if self.listenipaddress:
-            self.add_text(("Listenning on %s:%s" % (self.listenipaddress, self.listenport)), clear=True)
+            self.add_text(("Listenning on {}:{}".format(self.listenipaddress, self.listenport)), clear=True)
         else:
-            self.add_text(("Listenning on port %s" % self.listenport), clear=True)
+            self.add_text(("Listenning on port {}".format(self.listenport)), clear=True)
 
     def stop_serving(self):
         "Stops the server serving"
@@ -468,14 +468,14 @@ class _TFTPserver(asyncore.dispatcher):
         except Exception as e:
             server.log_exception(e)
             if server.listenipaddress:
-                server.text = """Failed to bind to %s : %s
+                server.text = """Failed to bind to {} : {}
 Possible reasons:
 Check this IP address exists on this server.
 (Try with 0.0.0.0 set as the 'listenipaddress'
 in the configuration file which binds to any
-server address.)"""  % (server.listenipaddress, server.listenport)
+server address.)""".format(server.listenipaddress, server.listenport)
             else:
-                server.text = "Failed to bind to port %s." % server.listenport
+                server.text = "Failed to bind to port {}.".format(server.listenport)
             
             server.text += """
 Check you do not have another service listenning on
@@ -751,7 +751,7 @@ class _Connection(object):
         if time.time()-self.connection_time > 30.0:
             # connection time has been greater than 30 seconds
             # without a packet sent or received, something is wrong
-            self.server.add_text("Connection from %s:%s timed out" % self.rx_addr)
+            self.server.add_text("Connection from {}:{} timed out".format(*self.rx_addr))
             self.shutdown()
             return
         if self.expired:
@@ -772,7 +772,7 @@ class _Connection(object):
             return
         # Tried four times, give up and set data to be an error value
         self.tx_data=b"\x00\x05\x00\x00Terminated due to timeout\x00"
-        self.server.add_text("Connection to %s:%s terminated due to timeout" % self.rx_addr)
+        self.server.add_text("Connection to {}:{} terminated due to timeout".format(*self.rx_addr))
         # send and shutdown, don't wait for anything further
         self.last_packet = True
 
@@ -788,7 +788,7 @@ class _Connection(object):
 
     def __str__(self):
         "String value of connection, for diagnostic purposes"
-        str_list = "%s %s" % (self.rx_addr, self.blkcount[2])
+        str_list = "{} {}".format(self.rx_addr, self.blkcount[2])
         return str_list
 
 
@@ -801,7 +801,7 @@ class _SendData(_Connection):
         if rx_data[1] != 1 :
             raise DropPacket
         if not os.path.exists(self.filepath) or os.path.isdir(self.filepath):
-            server.add_text("%s requested %s: file not found" % (rx_addr[0], self.filename))
+            server.add_text("{} requested {}: file not found".format(rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x01File not found\x00"
             # send and shutdown, don't wait for anything further
@@ -811,13 +811,13 @@ class _SendData(_Connection):
         try:
             self.fp=open(self.filepath, "rb")
         except IOError:
-            server.add_text("%s requested %s: unable to open file" % (rx_addr[0], self.filename))
+            server.add_text("{} requested {}: unable to open file".format(rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
             return
-        server.add_text("Sending %s to %s" % (self.filename, rx_addr[0]))
+        server.add_text("Sending {} to {}".format(self.filename, rx_addr[0]))
         # If True this flag indicates shutdown on the next received packet 
         self.last_receive = False
         # If self.tx_data has contents, this will be because the parent Connections
@@ -840,14 +840,14 @@ class _SendData(_Connection):
                 self.fp.close()
                 self.fp = None
                 bytes_sent = self.blksize*self.blkcount[2] + len(payload)
-                self.server.add_text("%s bytes of %s sent to %s" % (bytes_sent, self.filename, self.rx_addr[0]))
+                self.server.add_text("{} bytes of {} sent to {}".format(bytes_sent, self.filename, self.rx_addr[0]))
                 # shutdown on receiving the next ack
                 self.last_receive = True
             self.increment_blockcount()
             self.re_tx_data=b"\x00\x03"+self.blkcount[1]+payload
             self.tx_data=self.re_tx_data
         except Exception:
-            self.server.add_text("Failed to read file %s" % self.filename)
+            self.server.add_text("Failed to read file {}".format(self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x02Unable to read file\x00"
             # send and shutdown, don't wait for anything further
@@ -916,13 +916,13 @@ class _SendData(_Connection):
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
                     error_text = str(rx_data[4:-1], encoding="ascii")
-                    self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
+                    self.server.add_text("Error from {}:{} code {} : {}".format(self.rx_addr[0],
                                                                        self.rx_addr[1],
                                                                        rx_data[3],
                                                                        error_text))
                 else:
                     # No error text
-                    self.server.add_text("Error from %s:%s code %s" % (self.rx_addr[0],
+                    self.server.add_text("Error from {}:{} code {}".format(self.rx_addr[0],
                                                                   self.rx_addr[1],
                                                                   rx_data[3]))
             except Exception:
@@ -961,7 +961,7 @@ class _ReceiveData(_Connection):
         if rx_data[1] != 2 :
             raise DropPacket
         if os.path.exists(self.filepath):
-            server.add_text("%s trying to send %s: file already exists" % (rx_addr[0], self.filename))
+            server.add_text("{} trying to send {}: file already exists".format(rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x06File already exists\x00"
             # send and shutdown, don't wait for anything further
@@ -971,13 +971,13 @@ class _ReceiveData(_Connection):
         try:
             self.fp=open(self.filepath, "wb")
         except IOError:
-            server.add_text("%s trying to send %s: unable to open file" % (rx_addr[0], self.filename))
+            server.add_text("{} trying to send {}: unable to open file".format(rx_addr[0], self.filename))
             # Send an error value
             self.tx_data=b"\x00\x05\x00\x02Unable to open file\x00"
             # send and shutdown, don't wait for anything further
             self.last_packet = True
             return
-        server.add_text("Receiving %s from %s" % (self.filename, rx_addr[0]))
+        server.add_text("Receiving {} from {}".format(self.filename, rx_addr[0]))
         # Create next packet
         # If self.tx_data has contents, this will be because the parent Connections
         # class is acknowledging an option

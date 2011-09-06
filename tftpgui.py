@@ -5,7 +5,7 @@
 # tftpgui.py  - a TFTP server
 #
 # Version : 3.1
-# Date : 20110818
+# Date : 20110906
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
@@ -149,11 +149,11 @@ server = tftp_engine.ServerState(**cfgdict)
 if nogui:
     # Run the server from the command line without a gui
     if server.listenipaddress :
-        print("TFTP server listening on %s:%s\nSee logs at:\n%s" % (server.listenipaddress,
+        print("TFTP server listening on {}:{}\nSee logs at:\n{}".format(server.listenipaddress,
                                                                     server.listenport,
                                                                     server.logfolder))
     else:
-        print("TFTP server listening on port %s\nSee logs at:\n%s" % (server.listenport,server.logfolder))
+        print("TFTP server listening on port {}\nSee logs at:\n{}".format(server.listenport,server.logfolder))
     print("Press CTRL-c to stop")
     # loop_nogui runs the server loop,
     # which exits if the the server cannot listen on the port given

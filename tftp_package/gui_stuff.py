@@ -3,7 +3,7 @@
 # gui_stuff.py  - runs the GUI for TFTPgui
 #
 # Version : 3.1
-# Date : 20110813
+# Date : 20110906
 #
 # Author : Bernard Czenkusz
 # Email  : bernie@skipole.co.uk
@@ -34,11 +34,14 @@ from tftp_package import tftpcfg
 
 
 class TopFrame(tkinter.Frame):
+    "The startup frame holding buttons, the status canvas and the progress bar"
+
     def __init__(self, parent, server):
+        "Create the buttons, and assign actions, check the server every 100ms"
         tkinter.Frame.__init__(self, parent)
         self.server = server
         self.parent = parent
-        # Create the buttons
+        # Create the buttons in a frame
         ButtonFrame=tkinter.Frame(self)
         ButtonFrame.pack(side=tkinter.TOP, expand=tkinter.YES, fill=tkinter.X)
         # create four buttons
@@ -108,15 +111,18 @@ class TopFrame(tkinter.Frame):
             text="TFTP service port : " + str(self.server.listenport)
         self.StatusText["text"] = text
 
-
-
     def check_server(self):
             """Check if server available, and text messages from server"""
             if not self.server.engine_available:
+                # attribute engine_available becomes False if the server
+                # becomes unavailable due to an error, or ctrl-c, so this exit
+                # the application
                 self.exit_app()
             if self.server.text != self.TextArea["text"]:
                 self.TextArea["text"] = self.server.text
             if len(self.server):
+                # len(self.server) gives the number of connections available
+                # so this checks if any are connections are current
                 self.bar_value += 1
                 if self.bar_value >=100:
                     self.bar_value = 0
@@ -166,6 +172,8 @@ class TopFrame(tkinter.Frame):
 
 
 class ProgressBar(object):
+    "Creates the progress bar shown in TopFrame"
+
     def __init__(self, parent, Height=10, Width=200, ForegroundColor=None,
                  BackgroundColor=None):
         self.Height=Height
@@ -176,12 +184,11 @@ class ProgressBar(object):
         self.oscillating = False
         self.BarCanvas=tkinter.Canvas(parent, width=Width, height=Height,
                                       borderwidth=1, relief=tkinter.SUNKEN)
-        if (BackgroundColor==None): BackgroundColor="white"
-        self.BarCanvas["background"]=BackgroundColor
+        self.BarCanvas["background"] = "white" if BackgroundColor is None else BackgroundColor
         self.BarCanvas.pack(padx=5, pady=2)
         self.RectangleID=self.BarCanvas.create_rectangle(0, 0, 0, Height)
-        if (ForegroundColor==None): ForegroundColor="red"
-        self.BarCanvas.itemconfigure(self.RectangleID, fill=ForegroundColor)
+        fillcolor = "red" if ForegroundColor is None else ForegroundColor
+        self.BarCanvas.itemconfigure(self.RectangleID, fill=fillcolor)
         self.Clear()
         
     def SetProgressPercent(self, NewLevel):
@@ -194,7 +201,6 @@ class ProgressBar(object):
     def Clear(self):
         self.SetProgressPercent(0)
         self.oscillating = False
-
         
     def ShowProgress(self, barinfo):
         """This is the main function of the class, and is called
@@ -205,7 +211,7 @@ class ProgressBar(object):
         if barinfo >= 0:
             self.SetProgressPercent(barinfo)
             self.oscillating = False
-            return 1
+            return
         # So if barinfo is less than 0, draw oscillating bar
         self.oscillating = True
         if (self.Progress>98):
@@ -218,6 +224,8 @@ class ProgressBar(object):
 
 
 class SetupFrame(tkinter.Frame):
+    "This is the frame showing setup options"
+
     def __init__(self, parent, server, top_frame):
         tkinter.Frame.__init__(self, parent)
 
@@ -419,7 +427,6 @@ be pressed to apply the values."""
         self.clientipaddress.set(cfgdict["clientipaddress"])
         self.clientmask.set(str(cfgdict["clientmask"]))
         self.listenport.set(str(cfgdict["listenport"]))
-
 
     def ToggleRadio(self):
         if self.anyclient.get() == "1":
