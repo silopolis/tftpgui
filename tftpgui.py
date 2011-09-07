@@ -47,10 +47,10 @@ The command line options are:
 --version : prints the version number and exits
 --help : prints a usage message and exits
 
-<configuration-file> : The location of the configuration file.
+<configuration-file> : The optional location of a configuration file.
 
-If no  configuration file is given on the command line, a config file
-tftpgui.cfg in the same directory as this script will be looked for.
+Normally a hidden file .tftpgui.cfg in the users home directory will
+be created with default values.
 
 The configuration file holds the options available via the GUI 'Setup'
 button and as these are changed in the GUI, they are changed in the
@@ -88,13 +88,24 @@ if not sys.version_info[0] == 3 and sys.version_info[1] >= 2:
 scriptdirectory=os.path.abspath(os.path.dirname(sys.argv[0]))
 
 # set the default location of the config file
-default_configfile=os.path.join(scriptdirectory,'tftpgui.cfg')
-
+# in the scriptdirectory, or, if no file exists in
+# the script directory, set it as a hidden file
+# in users home directory
+default_configfile=os.path.join(scriptdirectory, 'tftpgui.cfg')
+if not os.path.isfile(default_configfile):
+    if os.name == "nt":
+        # where data is stored for windows systems
+        configdirectory = os.getenv("APPDATA", scriptdirectory)
+        default_configfile = os.path.join(configdirectory, 'tftpgui.cfg')
+    else:
+        # The users home directory - where data is stored for Linux systems
+        configdirectory = os.getenv("HOME", os.getenv("HOMEPATH", scriptdirectory))
+        default_configfile = os.path.join(configdirectory, '.tftpgui.cfg')
 
 parser = argparse.ArgumentParser(description='A TFTP gui server', epilog='''
 Without any options the program runs with a GUI.
-If no configuration file is specified, the program will look
-for tftpgui.cfg in the same directory as the %(prog)s script.''')
+If no configuration file is specified, the program will
+use default values.''')
 
 parser.add_argument("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
