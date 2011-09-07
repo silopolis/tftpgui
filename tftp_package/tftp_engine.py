@@ -1004,13 +1004,13 @@ class _ReceiveData(_Connection):
                 if len(rx_data[4:]) > 1  and len(rx_data[4:]) < 255:
                     # Error text available
                     error_text = str(rx_data[4:-1], encoding="ascii")
-                    self.server.add_text("Error from %s:%s code %s : %s" % (self.rx_addr[0],
+                    self.server.add_text("Error from {}:{} code {} : {}".format(self.rx_addr[0],
                                                                        self.rx_addr[1],
                                                                        rx_data[3],
                                                                        error_text))
                 else:
                     # No error text
-                    self.server.add_text("Error from %s:%s code %s" % (self.rx_addr[0],
+                    self.server.add_text("Error from {}:{} code {}".format(self.rx_addr[0],
                                                                   self.rx_addr[1],
                                                                   rx_data[3]))
             except Exception:
@@ -1058,7 +1058,7 @@ class _ReceiveData(_Connection):
             self.fp.close()
             self.fp=None
             bytes_sent = self.blksize*old_blockcount[2] + len(payload)
-            self.server.add_text("%s bytes of %s received from %s" % (bytes_sent, self.filename, self.rx_addr[0]))
+            self.server.add_text("{} bytes of {} received from {}".format(bytes_sent, self.filename, self.rx_addr[0]))
 
     def write_data(self, payload):
         """Write the payload to the open file.
