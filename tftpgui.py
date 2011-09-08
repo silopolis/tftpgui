@@ -89,8 +89,17 @@ if not sys.version_info[0] == 2 and sys.version_info[1] >= 5:
 usage = """usage: %prog [options] <configuration-file>
 
 Without any options the program runs with a GUI.
-If no configuration file is specified, the program will
-use default values."""
+If no configuration file is specified, the program
+will search for one in:
+
+The script directory as 'tftpgui.cfg'
+Linux: The users home directory as '.tftpgui.cfg'
+Windows: The per-user applications data directory
+as 'tftpgui.cfg'
+
+If the configuration file cannot be found, one will
+be created with default values in the users home,
+or per-user application data directory"""
 
 parser = OptionParser(usage=usage, version="2.2")
 parser.add_option("-n", "--nogui", action="store_true", dest="nogui", default=False,
