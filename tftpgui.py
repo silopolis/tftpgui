@@ -102,7 +102,9 @@ if not os.path.isfile(default_configfile):
         configdirectory = os.getenv("HOME", os.getenv("HOMEPATH", scriptdirectory))
         default_configfile = os.path.join(configdirectory, '.tftpgui.cfg')
 
-parser = argparse.ArgumentParser(description='A TFTP gui server', epilog='''
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+description='A TFTP gui server',
+epilog='''
 Without any options the program runs with a GUI.
 If no configuration file is specified, the program
 will search for one in:
