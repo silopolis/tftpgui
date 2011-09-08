@@ -104,8 +104,17 @@ if not os.path.isfile(default_configfile):
 
 parser = argparse.ArgumentParser(description='A TFTP gui server', epilog='''
 Without any options the program runs with a GUI.
-If no configuration file is specified, the program will
-use default values.''')
+If no configuration file is specified, the program
+will search for one in:
+
+The script directory as 'tftpgui.cfg'
+Linux: The users home directory as '.tftpgui.cfg'
+Windows: The per-user applications data directory
+as 'tftpgui.cfg'
+
+If the configuration file cannot be found, one will
+be created with default values in the users home,
+or per-user application data directory''')
 
 parser.add_argument("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
