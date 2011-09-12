@@ -121,7 +121,7 @@ or per-user application data directory''')
 parser.add_argument("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
 
-parser.add_argument('--version', action='version', version='%(prog)s 3.0')
+parser.add_argument('--version', action='version', version='%(prog)s 3.1')
 
 parser.add_argument('configfile',
                     nargs='?',
