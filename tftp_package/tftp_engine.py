@@ -2,7 +2,7 @@
 #
 # tftp_engine.py  - runs the tftp server for TFTPgui
 #
-# Version : 3.1
+# Version : 3.2
 # Date : 20110818
 #
 # Author : Bernard Czenkusz
@@ -98,6 +98,7 @@ class ServerState(object):
         self.tftp_server = None
         self._engine_available = True
         self.logging_enabled = False
+        self.transferring = False
 
         # break_loop attribute is available, but not used by this class
         # it can be used by another thread to flag the loop should be brocken
@@ -116,7 +117,7 @@ class ServerState(object):
         # and displayed to give server status messages
         self.text = """TFTPgui - a free tftp Server
 
-Version\t:  TFTPgui 3.1
+Version\t:  TFTPgui 3.2
 Author\t:  Bernard Czenkusz
 Web site\t:  www.skipole.co.uk
 License\t:  GPLv3
@@ -185,7 +186,7 @@ Press Start to enable the tftp server
         if connection.rx_addr not in self._connections:
             return
         del self._connections[connection.rx_addr]
-
+        self.transferring = bool(self._connections)
 
     def clear_all_connections(self):
         "Clears all connections from the connection list"
@@ -193,12 +194,11 @@ Press Start to enable the tftp server
         for connection in connections_list:
             connection.shutdown()
         self._connections = {}
-
+        self.transferring = False
 
     def get_connections_list(self):
         """Returns a list of current connection objects"""
         return list(self._connections.values())
-
 
     def create_connection(self, rx_data, rx_addr):
         """Creates either a ReceiveData or SendData connection object
@@ -223,7 +223,7 @@ Press Start to enable the tftp server
             raise DropPacket
         # Add it to dictionary
         self._connections[rx_addr] = connection
-
+        self.transferring = True
 
     def get_config_dict(self):
         "Returns a dictionary of the config attributes"
@@ -239,6 +239,9 @@ Press Start to enable the tftp server
     def set_from_config_dict(self, cfgdict):
         """Sets attributes from a given dictionary
            Returns True if all attributes supplied, or False if not"""
+        # attributes can only be changed while not serving
+        assert not self._serving
+        assert not self.serving
         all_attributes = True
         if "logfolder" in cfgdict:
             self.logfolder = cfgdict["logfolder"]
@@ -312,7 +315,6 @@ Press Start to enable the tftp server
         self._serving = False
         self.serving = False
 
-
     def poll(self):
         """Polls asyncore if serving,
            checks the attribute self.serving, turning on listenning
@@ -341,7 +343,7 @@ Press Start to enable the tftp server
             self.start_serving()
 
     def get_engine_available(self):
-        """returns the value af self._engine_available"""
+        """returns the value of self._engine_available"""
         return self._engine_available
 
     engine_available = property(get_engine_available)
