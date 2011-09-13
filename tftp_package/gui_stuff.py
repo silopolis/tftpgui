@@ -2,7 +2,7 @@
 #
 # gui_stuff.py  - runs the GUI for TFTPgui
 #
-# Version : 2.2
+# Version : 2.3
 # Date : 20110906
 #
 # Author : Bernard Czenkusz
@@ -92,8 +92,8 @@ class TopFrame(Tkinter.Frame):
         # Pack and display the frame
         self.pack()
 
-        # Check server every 100 msec
-        self.parent.after(10, self.check_server,)
+        # Check server every 200 msec
+        self.parent.after(20, self.check_server,)
 
         # Create an instance of the setup frame
         self.setup_frame = SetupFrame(parent, server, self)
@@ -120,9 +120,9 @@ class TopFrame(Tkinter.Frame):
                 self.exit_app()
             if self.server.text != self.TextArea["text"]:
                 self.TextArea["text"] = self.server.text
-            if len(self.server):
-                # len(self.server) gives the number of connections available
-                # so this checks if any are connections are current
+            if self.server.transferring:
+                # self.server.transferring is True if the server has
+                # a current connection
                 self.bar_value += 1
                 if self.bar_value >=100:
                     self.bar_value = 0
@@ -136,8 +136,8 @@ class TopFrame(Tkinter.Frame):
             if not self.server.serving and self.StartButton["state"] == Tkinter.DISABLED:
                 # Update the buttons
                 self.update_buttons()
-            # and call this function again, in another 100 msec
-            self.parent.after(10, self.check_server,)
+            # and call this function again, in another 200 msec
+            self.parent.after(20, self.check_server,)
 
     def setup_server(self):
         self.pack_forget()

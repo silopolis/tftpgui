@@ -4,7 +4,7 @@
 #
 # tftpgui.py  - a TFTP server
 #
-# Version : 2.2
+# Version : 2.3
 # Date : 20110908
 #
 # Author : Bernard Czenkusz
@@ -101,7 +101,7 @@ If the configuration file cannot be found, one will
 be created with default values in the users home,
 or per-user application data directory"""
 
-parser = OptionParser(usage=usage, version="2.2")
+parser = OptionParser(usage=usage, version="2.3")
 parser.add_option("-n", "--nogui", action="store_true", dest="nogui", default=False,
                   help="program runs without GUI, serving immediately")
 (options, args) = parser.parse_args()
